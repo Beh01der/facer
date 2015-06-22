@@ -1,0 +1,25 @@
+{
+  "name": "setic",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Andrey Chausenko <andrey.chausenko@gmail.com> (https://memz.co)",
+  "license": "ISC",
+  "dependencies": {
+    "archiver": "^0.14.4",
+    "body-parser": "^1.13.1",
+    "express": "^4.13.0",
+    "gridfs-stream": "^1.1.1",
+    "human-interval": "^0.1.4",
+    "moment": "^2.10.3",
+    "mongoose": "^4.0.5",
+    "mongoose-schema-extend": "^0.1.7",
+    "node-validator": "^0.1.13",
+    "request-json": "^0.5.3",
+    "rimraf": "^2.4.0",
+    "zip-stream": "^0.5.2"
+  }
+}
