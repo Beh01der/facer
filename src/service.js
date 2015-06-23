@@ -21,7 +21,7 @@ deployment object:
              type: static,
              age: '1 year',
              match: {
-                url: '/\.(js|css|gif|jpe?g|png|woff|ico|eot|svg|ttf)$/i'
+                url: '\.(js|css|gif|jpe?g|png|woff|ico|eot|svg|ttf)$'
              }
         },
         {
@@ -42,8 +42,6 @@ deployment object:
 
  */
 
-var deployments = [];
-
 var fs = require('fs');
 
 var express = require('express');
@@ -51,6 +49,9 @@ var rimraf = require('rimraf');
 var moment = require('moment');
 var bodyParser = require('body-parser');
 var validator = require('node-validator');
+var clone = require('clone');
+
+var deployment = require('./deployment');
 
 var fileDir = './data';
 function log(message) {
@@ -103,20 +104,31 @@ function authorise(req, res, next) {
 }
 
 function returnDeploymentInfo(req, res) {
-    res.json({
-        code: 'OK',
-        time: Date.now()
-    });
+    if (req.deployment) {
+        var deployment = clone(req.deployment);
+        delete deployment.prepared;
+
+        res.json({
+            code: 'OK',
+            time: Date.now(),
+            deployment: deployment
+        });
+    } else {
+
+    }
 }
 
 function returnDeploymentList(req, res) {
-    res.json(deployments);
+    res.json(deployment.list);
 }
 
-function createDeployment(req, res) {
-    res.json({
-        code: 'OK',
-        time: Date.now()
+function createDeployment(req, res, next) {
+    deployment.createNewDeployment(req.body, function (err, newDeployment){
+        if (!err) {
+            req.deployment = newDeployment;
+        }
+
+        next();
     });
 }
 
@@ -157,7 +169,7 @@ app.all('/control/deployment*', noCache, authorise);
 
 app.get('/control/deployments', returnDeploymentList);
 
-app.post('/control/deployments', bodyParser.json(), validator.express(deploymentRestModel), createDeployment, returnDeploymentInfo);
+app.post('/control/deployments', bodyParser.json(), validator.bodyValidator(deploymentRestModel), createDeployment, returnDeploymentInfo);
 
 app.get('/control/deployments/:id', findDeployment, returnDeploymentInfo);
 
@@ -165,10 +177,13 @@ app.patch('/control/deployments/:id', findDeployment, bodyParser.json(), returnD
 
 app.delete('/control/deployments/:id', findDeployment, deleteDeployment, returnDeploymentInfo);
 
+app.get('*', deployment.serveContent);
+
 // handle all unexpected errors
-app.use(function(error, req, res, next) {
-    if (error) {
-        error('Internal server error: ' + error.message);
+app.disable('x-powered-by');
+app.use(function(err, req, res, next) {
+    if (err) {
+        error('Internal server error: ' + err.message);
 
         res.status(400).json({
             code: 'ERROR',
@@ -177,6 +192,7 @@ app.use(function(error, req, res, next) {
     }
 });
 
-app.listen(3000, function () {
-    log('Listening on port 3000');
+var servicePort = process.env.SERVICE_PORT || 3000;
+app.listen(servicePort, function () {
+    log('Listening on port ' + servicePort);
 });
