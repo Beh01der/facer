@@ -54,6 +54,11 @@ function lookupFile(url) {
                                 prevHash = hash;
                                 prevModule = iModule;
                                 prevFilePath = filePath;
+
+                                if (!iModule.ageInterval) {
+                                    // if age = 0, we don't need to know contentModified of the file
+                                    break deployments;
+                                }
                             }
                         }
                     }
@@ -116,7 +121,7 @@ var service = {
                                     var newModule = clone(module);
                                     newModule.contentModified = modified.toDate().getTime();
                                     newModule.matchUrl = new RegExp(newModule.match.url);
-                                    newModule.ageInterval = humanInterval(newModule.age);
+                                    newModule.ageInterval = newModule.age && newModule.age !== "0" ? humanInterval(newModule.age) : 0;
                                     staticDeployments.modules.push(newModule);
                                 }
                             });
@@ -142,11 +147,19 @@ var service = {
         if (fileInfo) {
             send(req, fileInfo.path, { etag: false, lastModified: false })
                 .on('headers', function (res) {
-                    res.setHeader('Expires', new Date(Date.now() + fileInfo.module.ageInterval).toUTCString());
-                    res.setHeader('Pragma', 'public');
-                    var ageSeconds = fileInfo.module.ageInterval / 1000;
-                    res.setHeader('Cache-Control', 'public, max-age=' + ageSeconds + ', s-maxage=' + ageSeconds);
-                    res.setHeader('Last-Modified', new Date(fileInfo.module.contentModified).toUTCString());
+
+                    if (fileInfo.module.ageInterval) {
+                        res.setHeader('Pragma', 'public');
+                        res.setHeader('Expires', new Date(Date.now() + fileInfo.module.ageInterval).toUTCString());
+                        var ageSeconds = fileInfo.module.ageInterval / 1000;
+                        res.setHeader('Cache-Control', 'public, max-age=' + ageSeconds + ', s-maxage=' + ageSeconds);
+                        res.setHeader('Last-Modified', new Date(fileInfo.module.contentModified).toUTCString());
+                    } else {
+                        res.setHeader('Pragma', 'no-cache');
+                        res.setHeader('Expires', new Date(Date.now() - 100000000000).toUTCString());
+                        res.setHeader('Cache-Control', 'public, max-age=0, no-cache, no-store, must-revalidate');
+                        res.setHeader('Last-Modified', new Date().toUTCString());
+                    }
                 })
                 .pipe(res);
         } else {

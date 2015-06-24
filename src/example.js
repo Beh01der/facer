@@ -28,14 +28,16 @@ createDeployment({
     "modules": [
         {
             "type": "static",
-            "age": "1 year",
+            "age": "0",
+            //"age": "1 year",
             "match": {
                 "url": "(js|css|gif|jpe?g|png|woff|ico|eot|svg|ttf)$"
             }
         },
         {
             "type": "static",
-            "age": "8 hours",
+            "age": "0",
+            //"age": "8 hours",
             "match": {
                 "url": ".*"
             }
@@ -49,14 +51,16 @@ createDeployment({
         "modules": [
             {
                 "type": "static",
-                "age": "1 year",
+                "age": "0",
+                //"age": "1 year",
                 "match": {
                     "url": "(js|css|gif|jpe?g|png|woff|ico|eot|svg|ttf)$"
                 }
             },
             {
                 "type": "static",
-                "age": "8 hours",
+                "age": "0",
+                //"age": "8 hours",
                 "match": {
                     "url": ".*"
                 }
