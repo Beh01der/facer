@@ -16,19 +16,23 @@ deployment object:
     contentModified: time,
     dataUrl: string (url to get zipped content)
     dataSize: number,
-    modules: [
+    rules: [
+         {
+             age: '8 hours'
+         },
         {
-             type: static,
              age: '1 year',
              match: {
-                url: '\.(js|css|gif|jpe?g|png|woff|ico|eot|svg|ttf)$'
+                path: '[.](js|css|gif|jpe?g|png|woff|ico|eot|svg|ttf)$'
              }
         },
         {
-            type: static,
-            age: '8 hours',
             match: {
-                url: '.*'
+                path: '^/cloud/api'
+            },
+            proxy: {
+                path: '.*',
+                downstream: 'http://localhost:3000$0'
             }
         }
     ]
@@ -51,7 +55,8 @@ var bodyParser = require('body-parser');
 var validator = require('node-validator');
 var clone = require('clone');
 
-var deployment = require('./deployment');
+var deployment = require('./deployments');
+var serveStatic = require('./serve-static');
 
 var fileDir = './data';
 function log(message) {
@@ -146,15 +151,19 @@ function deleteDeployment(req, res) {
     });
 }
 
-var matchRulesModel = validator
+var matchSectionRestModel = validator
     .isObject()
-    .withRequired('url', validator.isString())
-    .withOptional('rewrite', validator.isString());
+    .withRequired('path', validator.isString());
 
-var moduleRestModel = validator
+var proxySectionRestModel = validator
     .isObject()
-    .withRequired('type', validator.isString({ regex: /static|proxy/ }))
-    .withRequired('match', matchRulesModel)
+    .withRequired('path', validator.isString())
+    .withRequired('downstream', validator.isString());
+
+var ruleRestModel = validator
+    .isObject()
+    .withOptional('match', matchSectionRestModel)
+    .withOptional('proxy', proxySectionRestModel)
     .withOptional('age', validator.isString());
 
 var deploymentRestModel = validator
@@ -162,7 +171,7 @@ var deploymentRestModel = validator
     .withRequired('name', validator.isString())
     .withRequired('state', validator.isString({ regex: /active|inactive/ }))
     .withRequired('dataUrl', validator.isString())
-    .withRequired('modules', validator.isArray(moduleRestModel, { min: 1, max: 10 }))
+    .withRequired('rules', validator.isArray(ruleRestModel, { min: 1, max: 30 }))
     .withOptional('contentModified', validator.isIsoDateTime());
 
 app.all('/control/deployment*', noCache, authorise);
@@ -177,13 +186,13 @@ app.patch('/control/deployments/:id', findDeployment, bodyParser.json(), returnD
 
 app.delete('/control/deployments/:id', findDeployment, deleteDeployment, returnDeploymentInfo);
 
-app.get('*', deployment.serveContent);
+app.get('*', deployment.findRule, serveStatic);
 
 // handle all unexpected errors
 app.disable('x-powered-by');
 app.use(function(err, req, res, next) {
     if (err) {
-        error('Internal server error: ' + err.message);
+        error('Internal server error: ' + JSON.stringify(err));
 
         res.status(400).json({
             code: 'ERROR',

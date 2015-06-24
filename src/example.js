@@ -24,22 +24,17 @@ createDeployment({
     "name": "memz-client-15-0528-0928",
     "state": "active",
     "contentModified": "2015-01-01T00:00:00+10:00",
-    "dataUrl": "http://localhost:3001/WGCz8wbTIoQNsNcNUauZN4lcS1UUR2Xf/files/0",
-    "modules": [
+    "dataUrl": "http://localhost:3001/1fP7JPjn6bufadJ9MAV3OxgP9kgXHeji/files/0",
+    "rules": [
         {
-            "type": "static",
+            //"age": "0",
+            "age": "8 hours"
+        },
+        {
             //"age": "0",
             "age": "1 year",
             "match": {
-                "url": "(js|css|gif|jpe?g|png|woff|ico|eot|svg|ttf)$"
-            }
-        },
-        {
-            "type": "static",
-            //"age": "0",
-            "age": "8 hours",
-            "match": {
-                "url": ".*"
+                "path": "[.](js|css|gif|jpe?g|png|woff|ico|eot|svg|ttf)$"
             }
         }
     ]
@@ -47,22 +42,17 @@ createDeployment({
     createDeployment({
         "name": "memz-client-15-0623-1905",
         "state": "active",
-        "dataUrl": "http://localhost:3001/VAbOYNsYRKzWCWqDUNkzjj0t1cIivSRN/files/0",
-        "modules": [
+        "dataUrl": "http://localhost:3001/2K2GcfZXeGKokJjxKj98pMWup7GWf2zh/files/0",
+        "rules": [
             {
-                "type": "static",
+                //"age": "0",
+                "age": "8 hours"
+            },
+            {
                 //"age": "0",
                 "age": "1 year",
                 "match": {
-                    "url": "(js|css|gif|jpe?g|png|woff|ico|eot|svg|ttf)$"
-                }
-            },
-            {
-                "type": "static",
-                //"age": "0",
-                "age": "8 hours",
-                "match": {
-                    "url": ".*"
+                    "path": "[.](js|css|gif|jpe?g|png|woff|ico|eot|svg|ttf)$"
                 }
             }
         ]
