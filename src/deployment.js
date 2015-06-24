@@ -115,17 +115,23 @@ var service = {
                         unzip(dataFile, function (err) {
                             fs.unlink(dataFile, function () {});
 
-                            var staticDeployments = { id: info.id, modules: [] };
-                            info.modules.forEach(function(module){
-                                if (module.type === 'static') {
-                                    var newModule = clone(module);
-                                    newModule.contentModified = modified.toDate().getTime();
-                                    newModule.matchUrl = new RegExp(newModule.match.url);
-                                    newModule.ageInterval = newModule.age && newModule.age !== "0" ? humanInterval(newModule.age) : 0;
-                                    staticDeployments.modules.push(newModule);
+                            if (info.state === 'active') {
+                                if (info.type === 'static') {
+                                    var staticDeployments = { id: info.id, modules: [] };
+                                    info.modules.forEach(function(module){
+                                        if (module.type === 'static') {
+                                            var newModule = clone(module);
+                                            newModule.contentModified = modified.toDate().getTime();
+                                            newModule.matchUrl = new RegExp(newModule.match.url);
+                                            newModule.ageInterval = newModule.age && newModule.age !== "0" ? humanInterval(newModule.age) : 0;
+                                            staticDeployments.modules.push(newModule);
+                                        }
+                                    });
+                                    deploymentsStatic.push(staticDeployments);
+                                } else {
+
                                 }
-                            });
-                            deploymentsStatic.push(staticDeployments);
+                            }
 
                             callback(null, info);
                         });

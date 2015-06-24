@@ -148,14 +148,14 @@ function deleteDeployment(req, res) {
 
 var matchRulesModel = validator
     .isObject()
-    .withRequired('url', validator.isString());
+    .withRequired('url', validator.isString())
+    .withOptional('rewrite', validator.isString());
 
 var moduleRestModel = validator
     .isObject()
-    .withRequired('type', validator.isString({ regex: /static/ }))
-    .withRequired('age', validator.isString())
+    .withRequired('type', validator.isString({ regex: /static|proxy/ }))
     .withRequired('match', matchRulesModel)
-    .withOptional('rewrite', validator.isObject());
+    .withOptional('age', validator.isString());
 
 var deploymentRestModel = validator
     .isObject()
