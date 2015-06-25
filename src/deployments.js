@@ -44,11 +44,16 @@ function fileInfo(path) {
 
     var stats = null;
     var filePath = path;
+    var redirect = false;
 
     try {
         stats = fs.statSync(filePath);
         if (stats && stats.isDirectory()) {
-            filePath += '/index.html';
+            if (!filePath.length || filePath[filePath.length - 1] != '/') {
+                filePath += '/';
+                redirect = true;
+            }
+            filePath += 'index.html';
             stats = fs.statSync(filePath);
         }
     } catch (e) {
@@ -64,7 +69,8 @@ function fileInfo(path) {
     if (hash) {
         info = {
             md5: hash,
-            path: filePath
+            path: filePath,
+            redirect: redirect
         };
     } else {
         info = null;
@@ -96,6 +102,7 @@ function tryFiles(req, deployment) {
             }
 
             preparedRule.md5 = file.md5;
+            preparedRule.redirect = file.redirect;
             preparedRule.resultPath = file.path;
             preparedRule.ageInterval = rule.ageInterval;
             preparedRule.contentModified = rule.contentModified;
