@@ -35,6 +35,10 @@ or
 
  */
 
+function cleanCache() {
+    resolvedRules = {};
+    fileInfos = {};
+}
 
 function fileInfo(path) {
     var info = fileInfos[path];
@@ -172,6 +176,7 @@ var service = {
                         unzip(dataFile, function (err) {
                             fs.unlink(dataFile, function () {});
 
+                            deployments.push(info);
                             if (info.state === 'active') {
                                 var preparedDeployments = { id: info.id, rules: [] };
                                 (info.rules || [{}]).forEach(function(rule){
@@ -194,6 +199,7 @@ var service = {
                                     preparedDeployments.rules.push(newRule);
                                 });
                                 deploymentsPrepared.push(preparedDeployments);
+                                cleanCache();
                             }
 
                             callback(null, info);
@@ -256,6 +262,42 @@ var service = {
         req.rule = resolvedRule;
 
         next();
+    },
+
+    removeDeployment: function(deployment) {
+        for (var i = 0; i < deployments.length; i++) {
+            var d = deployments[i];
+            if (d.id === deployment.id) {
+                deployments.splice(i, 1);
+                deploymentsPrepared.splice(i, 1);
+                cleanCache();
+                return;
+            }
+        }
+    },
+
+    getDeploymentById: function(id) {
+        for (var i = 0; i < deployments.length; i++) {
+            var deployment = deployments[i];
+            if (deployment.id.toString() === id) {
+                return deployment;
+            }
+        }
+    },
+
+    getDeploymentByIndex: function(index) {
+        if (index && Math.abs(index) <= deployments.length) {
+            return index > 0 ? deployments[index - 1] : deployments[deployments.length + index];
+        }
+    },
+
+    getDeploymentByName: function(name) {
+        for (var i = 0; i < deployments.length; i++) {
+            var deployment = deployments[i];
+            if (deployment.name === name) {
+                return deployment;
+            }
+        }
     }
 };
 

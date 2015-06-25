@@ -58,7 +58,7 @@ var bodyParser = require('body-parser');
 var validator = require('node-validator');
 var clone = require('clone');
 
-var deployment = require('./deployments');
+var deploymentManager = require('./deployments');
 var serveStatic = require('./serve-static');
 var serveDownstream = require('./serve-downstream');
 
@@ -113,26 +113,21 @@ function authorise(req, res, next) {
 }
 
 function returnDeploymentInfo(req, res) {
-    if (req.deployment) {
-        var deployment = clone(req.deployment);
-        delete deployment.prepared;
+    var deployment = clone(req.deployment);
 
-        res.json({
-            code: 'OK',
-            time: Date.now(),
-            deployment: deployment
-        });
-    } else {
-
-    }
+    res.json({
+        code: 'OK',
+        time: Date.now(),
+        deployment: deployment
+    });
 }
 
 function returnDeploymentList(req, res) {
-    res.json(deployment.list);
+    res.json(deploymentManager.list);
 }
 
 function createDeployment(req, res, next) {
-    deployment.createNewDeployment(req.body, function (err, newDeployment){
+    deploymentManager.createNewDeployment(req.body, function (err, newDeployment){
         if (!err) {
             req.deployment = newDeployment;
         }
@@ -141,18 +136,47 @@ function createDeployment(req, res, next) {
     });
 }
 
-function findDeployment(req, res) {
-    res.json({
-        code: 'OK',
-        time: Date.now()
-    });
+function findDeployment(req, res, next) {
+    // * search by id
+    // * search by index from top: 1..n
+    // * search by index from bottom: -1..-n
+    // * search by name
+    var id = req.params.id;
+    var deployment;
+    if (id) {
+        //if (id.length == 24) {
+            // looks like id
+            deployment = deploymentManager.getDeploymentById(id);
+        //}
+
+        if (!deployment) {
+            var index = parseInt(id);
+            if (index) {
+                // looks like index
+                deployment = deploymentManager.getDeploymentByIndex(index);
+            }
+        }
+
+        if (!deployment) {
+            deployment = deploymentManager.getDeploymentByName(id);
+        }
+    }
+
+    if (deployment) {
+        req.deployment = deployment;
+        next();
+    } else {
+        res.status(404).json({
+            code: 'ERROR',
+            message: 'Not found',
+            time: Date.now()
+        });
+    }
 }
 
-function deleteDeployment(req, res) {
-    res.json({
-        code: 'OK',
-        time: Date.now()
-    });
+function deleteDeployment(req, res, next) {
+    deploymentManager.removeDeployment(req.deployment);
+    next();
 }
 
 var matchSectionRestModel = validator
@@ -191,11 +215,13 @@ app.post('/control/deployments', bodyParser.json(), validator.bodyValidator(depl
 
 app.get('/control/deployments/:id', findDeployment, returnDeploymentInfo);
 
+app.put('/control/deployments/:id', findDeployment, bodyParser.json(), validator.bodyValidator(deploymentRestModel) , returnDeploymentInfo);
+
 app.patch('/control/deployments/:id', findDeployment, bodyParser.json(), returnDeploymentInfo);
 
 app.delete('/control/deployments/:id', findDeployment, deleteDeployment, returnDeploymentInfo);
 
-app.get('*', deployment.findRule, serveStatic, serveDownstream);
+app.get('*', deploymentManager.findRule, serveStatic, serveDownstream);
 
 // handle all unexpected errors
 app.disable('x-powered-by');
