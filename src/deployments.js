@@ -122,12 +122,16 @@ function tryDownstreams(req, deployment) {
 
     // TODO downstream must inherit rewrite if matches
     deployment.rules.forEach(function (rule) {
-        if (rule.proxyPath && (!rule.matchPath || rule.matchPath.test(path))) {
-            preparedRule.resultUrl = path.replace(rule.proxyPath, rule.proxyDownstream);
+        if (rule.proxyDownstream && (!rule.matchPath || rule.matchPath.test(path))) {
+            preparedRule.resultPath = path;
+            preparedRule.downstream = rule.proxyDownstream;
+            if (rule.rewritePath) {
+                preparedRule.resultPath = preparedRule.resultPath.replace(rule.rewritePath, rule.rewriteNewPath);
+            }
         }
     });
 
-    return preparedRule.resultUrl ? preparedRule : null;
+    return preparedRule.resultPath ? preparedRule : null;
 }
 
 var service = {
