@@ -12,6 +12,7 @@ var humanInterval = require('human-interval');
 var deployments = [];
 var deploymentsPrepared = [];
 var resolvedRules = {};
+var fileInfos = {};
 
 /*
 
@@ -34,17 +35,20 @@ or
 
  */
 
-function tryFiles(req, deployment) {
-    var url = parseurl(req);
-    var path = url.pathname;
 
-    var filePath = './data/' + deployment.id + path;
+function fileInfo(path) {
+    var info = fileInfos[path];
+    if (info !== undefined) {
+        return info;
+    }
 
     var stats = null;
+    var filePath = path;
+
     try {
         stats = fs.statSync(filePath);
         if (stats && stats.isDirectory()) {
-            filePath += 'index.html';
+            filePath += '/index.html';
             stats = fs.statSync(filePath);
         }
     } catch (e) {
@@ -57,19 +61,42 @@ function tryFiles(req, deployment) {
         hash = md5.digest('hex');
     }
 
-    if (!hash) {
-        // no file found
-        return null;
+    if (hash) {
+        info = {
+            md5: hash,
+            path: filePath
+        };
+    } else {
+        info = null;
     }
 
+    return fileInfos[path] = info;
+}
+
+function tryFiles(req, deployment) {
+    var url = parseurl(req);
+    var path = url.pathname;
+
     var preparedRule = {
-        type: 'file',
-        resultPath: filePath,
-        md5: hash
+        type: 'file'
     };
 
     deployment.rules.forEach(function (rule) {
         if (!rule.matchPath || rule.matchPath.test(path)) {
+            var filePath = path;
+            if (rule.rewritePath) {
+                filePath = filePath.replace(rule.rewritePath, rule.rewriteNewPath);
+            }
+
+            filePath = './data/' + deployment.id + filePath;
+
+            var file = fileInfo(filePath);
+            if (!file) {
+                return;
+            }
+
+            preparedRule.md5 = file.md5;
+            preparedRule.resultPath = file.path;
             preparedRule.ageInterval = rule.ageInterval;
             preparedRule.contentModified = rule.contentModified;
         }
@@ -86,6 +113,7 @@ function tryDownstreams(req, deployment) {
         type: 'downstream'
     };
 
+    // TODO downstream must inherit rewrite if matches
     deployment.rules.forEach(function (rule) {
         if (rule.proxyPath && (!rule.matchPath || rule.matchPath.test(path))) {
             preparedRule.resultUrl = path.replace(rule.proxyPath, rule.proxyDownstream);
@@ -144,8 +172,12 @@ var service = {
                                     newRule.ageInterval = newRule.age && newRule.age !== "0" ? humanInterval(newRule.age) : 0;
 
                                     if (newRule.proxy) {
-                                        newRule.proxyPath = new RegExp(newRule.proxy.path);
                                         newRule.proxyDownstream = newRule.proxy.downstream;
+                                    }
+
+                                    if (newRule.rewrite) {
+                                        newRule.rewritePath = new RegExp(newRule.rewrite.path);
+                                        newRule.rewriteNewPath = newRule.rewrite.newPath;
                                     }
 
                                     preparedDeployments.rules.push(newRule);
@@ -174,9 +206,9 @@ var service = {
         if (resolvedRule === undefined) {
             var prevFile;
             for (var i = deploymentsPrepared.length - 1; i >= 0; i-- ) {
-                var iDeployment = deploymentsPrepared[i];
+                var deployment = deploymentsPrepared[i];
 
-                var file = tryFiles(req, iDeployment);
+                var file = tryFiles(req, deployment);
                 if (file) {
                     if (prevFile && prevFile.md5 !== file.md5) {
                         // for downstream just get the first match
@@ -190,7 +222,7 @@ var service = {
                         }
                     }
                 } else {
-                    var downstream = tryDownstreams(req, iDeployment);
+                    var downstream = tryDownstreams(req, deployment);
                     if (downstream) {
                         resolvedRule = downstream;
                         break;

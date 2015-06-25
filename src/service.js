@@ -24,6 +24,10 @@ deployment object:
              age: '1 year',
              match: {
                 path: '[.](js|css|gif|jpe?g|png|woff|ico|eot|svg|ttf)$'
+             },
+             rewrite: {
+                path: '.*',
+                newPath: '/cloud$0'
              }
         },
         {
@@ -31,8 +35,7 @@ deployment object:
                 path: '^/cloud/api'
             },
             proxy: {
-                path: '.*',
-                downstream: 'http://localhost:3000$0'
+                downstream: 'http://localhost:3000'
             }
         }
     ]
@@ -57,6 +60,7 @@ var clone = require('clone');
 
 var deployment = require('./deployments');
 var serveStatic = require('./serve-static');
+var serveDownstream = require('./serve-downstream');
 
 var fileDir = './data';
 function log(message) {
@@ -157,13 +161,18 @@ var matchSectionRestModel = validator
 
 var proxySectionRestModel = validator
     .isObject()
-    .withRequired('path', validator.isString())
     .withRequired('downstream', validator.isString());
+
+var rewriteSectionRestModel = validator
+    .isObject()
+    .withOptional('path', validator.isString())
+    .withOptional('newPath', validator.isString());
 
 var ruleRestModel = validator
     .isObject()
     .withOptional('match', matchSectionRestModel)
     .withOptional('proxy', proxySectionRestModel)
+    .withOptional('rewrite', rewriteSectionRestModel)
     .withOptional('age', validator.isString());
 
 var deploymentRestModel = validator
@@ -186,7 +195,7 @@ app.patch('/control/deployments/:id', findDeployment, bodyParser.json(), returnD
 
 app.delete('/control/deployments/:id', findDeployment, deleteDeployment, returnDeploymentInfo);
 
-app.get('*', deployment.findRule, serveStatic);
+app.get('*', deployment.findRule, serveStatic, serveDownstream);
 
 // handle all unexpected errors
 app.disable('x-powered-by');

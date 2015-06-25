@@ -28,7 +28,11 @@ createDeployment({
     "rules": [
         {
             //"age": "0",
-            "age": "8 hours"
+            "age": "8 hours"//,
+            //"rewrite": {
+            //    "path": "/cloud(.*)",
+            //    "newPath": "$1"
+            //}
         },
         {
             //"age": "0",
@@ -39,22 +43,22 @@ createDeployment({
         }
     ]
 }, function() {
-    createDeployment({
-        "name": "memz-client-15-0623-1905",
-        "state": "active",
-        "dataUrl": "http://localhost:3001/2K2GcfZXeGKokJjxKj98pMWup7GWf2zh/files/0",
-        "rules": [
-            {
-                //"age": "0",
-                "age": "8 hours"
-            },
-            {
-                //"age": "0",
-                "age": "1 year",
-                "match": {
-                    "path": "[.](js|css|gif|jpe?g|png|woff|ico|eot|svg|ttf)$"
-                }
-            }
-        ]
-    });
+    //createDeployment({
+    //    "name": "memz-client-15-0623-1905",
+    //    "state": "active",
+    //    "dataUrl": "http://localhost:3001/2K2GcfZXeGKokJjxKj98pMWup7GWf2zh/files/0",
+    //    "rules": [
+    //        {
+    //            //"age": "0",
+    //            "age": "8 hours"
+    //        },
+    //        {
+    //            //"age": "0",
+    //            "age": "1 year",
+    //            "match": {
+    //                "path": "[.](js|css|gif|jpe?g|png|woff|ico|eot|svg|ttf)$"
+    //            }
+    //        }
+    //    ]
+    //});
 });
