@@ -129,7 +129,7 @@ function returnDeploymentList(req, res) {
 function patchDeployment(req, res, next) {
     var fields = req.body;
     var deployment = req.deployment;
-    req.dontUpdateData = true;
+    req.dontUpdateContent = true;
 
     if (fields.state) {
         deployment.state = fields.state;
@@ -144,7 +144,7 @@ function patchDeployment(req, res, next) {
     }
 
     if (fields.dataUrl) {
-        req.dontUpdateData = false;
+        req.dontUpdateContent = false;
         deployment.dataUrl = fields.dataUrl;
     }
 
@@ -153,7 +153,7 @@ function patchDeployment(req, res, next) {
 }
 
 function createOrUpdateDeployment(req, res, next) {
-    deploymentManager.createOrUpdateDeployment(req.body, req.deployment, req.dontUpdateData, function (err, newDeployment){
+    deploymentManager.createOrUpdateDeployment(req.body, req.deployment, req.dontUpdateContent, function (err, newDeployment){
         if (!err) {
             req.deployment = newDeployment;
         } else {

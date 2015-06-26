@@ -12,6 +12,7 @@
     "body-parser": "^1.13.1",
     "clone": "^1.0.2",
     "express": "^4.13.0",
+    "fs-extra": "^0.20.1",
     "fstream": "^1.0.7",
     "gridfs-stream": "^1.1.1",
     "http-proxy": "^1.11.1",

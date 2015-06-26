@@ -10,6 +10,8 @@ var parseurl = require('parseurl');
 var humanInterval = require('human-interval');
 var randomstring = require("randomstring");
 var rimraf = require('rimraf');
+var fse = require('fs-extra');
+var path = require('path');
 
 
 var deployments = [];
@@ -203,49 +205,85 @@ function updateCreateDeployment(info, oldDeployment) {
     }
 }
 
+function updateDeploymentContent(dataDir, dataSourceUrl, callback) {
+    var stat;
+    var dataFile;
+    if (dataSourceUrl.protocol === 'http:') {
+        // download zip file from http (filex)
+        dataFile = dataDir + '/deployment.zip';
+        var client = request.createClient(dataSourceUrl.protocol + '//' + dataSourceUrl.host);
+        client.saveFile(dataSourceUrl.path, dataFile, function(err, res, body) {
+            if (err) {
+                callback(err);
+            } else {
+                if (res.statusCode === 200) {
+                    stat = fs.statSync(dataFile);
+                    if (stat.size) {
+                        unzip(dataFile, function (err) {
+                            rimraf.sync(dataFile);
+                            callback(null, stat.size);
+                        });
+                    } else {
+
+                    }
+                } else {
+
+                }
+            }
+        });
+    } else {
+        // try local FS
+        var dataSourcePath = path.parse(dataSourceUrl.path);
+        if (dataSourcePath.ext === '.zip') {
+            // local zip file
+            // TODO what if path is invalid ? handle errors
+            stat = fs.statSync(dataSourceUrl.path);
+            if (stat.isFile() && stat.size) {
+                dataFile = dataDir + '/' + dataSourcePath.base;
+                fse.copy(dataSourceUrl.path, dataFile, function (err) {
+                    unzip(dataFile, function (err2) {
+                        rimraf.sync(dataFile);
+                        callback(err2, stat.size);
+                    });
+                });
+            } else {
+
+            }
+        } else {
+            // local dir
+            stat = fs.statSync(dataSourceUrl.path);
+            if (stat.isDirectory()) {
+                fse.copy(dataSourceUrl.path, dataDir, function(err) {
+                    callback(err, 10000);
+                });
+            }
+        }
+    }
+}
+
 var service = {
     list: deployments,
 
-    createOrUpdateDeployment: function(info, oldDeployment, dontUpdateData, callback) {
-        if (dontUpdateData) {
+    createOrUpdateDeployment: function(info, oldDeployment, dontUpdateContent, callback) {
+        if (dontUpdateContent) {
             updateCreateDeployment(info, oldDeployment);
             callback(null, info);
         } else {
             info.id = oldDeployment ? oldDeployment.id : randomstring.generate();
 
             // fetch data
-            var dataUrl = url.parse(info.dataUrl);
-            if (!dataUrl) {
+            var dataSourceUrl = url.parse(info.dataUrl);
+            if (!dataSourceUrl) {
                 callback('Couldn\'n resolve dataUrl');
             }
 
             var dataDir = './data/' + info.id;
-            rimraf.sync(dataDir);
-            fs.mkdirSync(dataDir);
+            fse.emptyDirSync(dataDir);
 
-            var dataFile = dataDir + '/deployment.zip';
-            var client = request.createClient(dataUrl.protocol + '//' + dataUrl.host);
-            client.saveFile(dataUrl.path, dataFile, function(err, res, body) {
-                if (err) {
-                    callback(err);
-                } else {
-                    if (res.statusCode === 200) {
-                        var stat = fs.statSync(dataFile);
-                        info.dataSize = stat.size;
-                        if (info.dataSize) {
-                            unzip(dataFile, function (err) {
-                                fs.unlink(dataFile, function () {});
-                                updateCreateDeployment(info, oldDeployment);
-
-                                callback(null, info);
-                            });
-                        } else {
-
-                        }
-                    } else {
-
-                    }
-                }
+            updateDeploymentContent(dataDir, dataSourceUrl, function(err, size) {
+                info.dataSize = size;
+                updateCreateDeployment(info, oldDeployment);
+                callback(null, info);
             });
         }
     },
