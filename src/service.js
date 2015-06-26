@@ -41,11 +41,11 @@ deployment object:
     ]
 }
 
-
- header: [
- 'Cache-Control': 'public, max-age=12223, s-maxage=12223',
- 'Pragma': 'public'
- ]
+patch fields:
+* state
+* contentModified
+* dataUrl
+* rules
 
  */
 
@@ -126,10 +126,38 @@ function returnDeploymentList(req, res) {
     res.json(deploymentManager.list);
 }
 
-function createDeployment(req, res, next) {
-    deploymentManager.createNewDeployment(req.body, function (err, newDeployment){
+function patchDeployment(req, res, next) {
+    var fields = req.body;
+    var deployment = req.deployment;
+    req.dontUpdateData = true;
+
+    if (fields.state) {
+        deployment.state = fields.state;
+    }
+
+    if (fields.rules) {
+        deployment.rules = fields.rules;
+    }
+
+    if (fields.contentModified) {
+        deployment.contentModified = fields.contentModified;
+    }
+
+    if (fields.dataUrl) {
+        req.dontUpdateData = false;
+        deployment.dataUrl = fields.dataUrl;
+    }
+
+    req.body = deployment;
+    next();
+}
+
+function createOrUpdateDeployment(req, res, next) {
+    deploymentManager.createOrUpdateDeployment(req.body, req.deployment, req.dontUpdateData, function (err, newDeployment){
         if (!err) {
             req.deployment = newDeployment;
+        } else {
+            delete req.deployment;
         }
 
         next();
@@ -144,10 +172,10 @@ function findDeployment(req, res, next) {
     var id = req.params.id;
     var deployment;
     if (id) {
-        //if (id.length == 24) {
-            // looks like id
+        if (id.length === 32) {
+             //looks like id
             deployment = deploymentManager.getDeploymentById(id);
-        //}
+        }
 
         if (!deployment) {
             var index = parseInt(id);
@@ -207,21 +235,28 @@ var deploymentRestModel = validator
     .withRequired('rules', validator.isArray(ruleRestModel, { min: 1, max: 30 }))
     .withOptional('contentModified', validator.isIsoDateTime());
 
+var patchDeploymentRestModel = validator
+    .isObject()
+    .withOptional('state', validator.isString({ regex: /active|inactive/ }))
+    .withOptional('dataUrl', validator.isString())
+    .withOptional('rules', validator.isArray(ruleRestModel, { min: 1, max: 30 }))
+    .withOptional('contentModified', validator.isIsoDateTime());
+
 app.all('/control/deployment*', noCache, authorise);
 
 app.get('/control/deployments', returnDeploymentList);
 
-app.post('/control/deployments', bodyParser.json(), validator.bodyValidator(deploymentRestModel), createDeployment, returnDeploymentInfo);
+app.post('/control/deployments', bodyParser.json(), validator.bodyValidator(deploymentRestModel), createOrUpdateDeployment, returnDeploymentInfo);
 
 app.get('/control/deployments/:id', findDeployment, returnDeploymentInfo);
 
-app.put('/control/deployments/:id', findDeployment, bodyParser.json(), validator.bodyValidator(deploymentRestModel) , returnDeploymentInfo);
+app.put('/control/deployments/:id', findDeployment, bodyParser.json(), validator.bodyValidator(deploymentRestModel), createOrUpdateDeployment, returnDeploymentInfo);
 
-app.patch('/control/deployments/:id', findDeployment, bodyParser.json(), returnDeploymentInfo);
+app.patch('/control/deployments/:id', findDeployment, bodyParser.json(), validator.bodyValidator(patchDeploymentRestModel), patchDeployment, createOrUpdateDeployment, returnDeploymentInfo);
 
 app.delete('/control/deployments/:id', findDeployment, deleteDeployment, returnDeploymentInfo);
 
-app.get('*', deploymentManager.findRule, serveStatic, serveDownstream);
+app.all('*', deploymentManager.findRule, serveStatic, serveDownstream);
 
 // handle all unexpected errors
 app.disable('x-powered-by');

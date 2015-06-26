@@ -8,6 +8,9 @@ var unzip = require('unzip-wrapper');
 var clone = require('clone');
 var parseurl = require('parseurl');
 var humanInterval = require('human-interval');
+var randomstring = require("randomstring");
+var rimraf = require('rimraf');
+
 
 var deployments = [];
 var deploymentsPrepared = [];
@@ -36,6 +39,7 @@ or
  */
 
 function cleanCache() {
+    deploymentsPrepared = [];
     resolvedRules = {};
     fileInfos = {};
 }
@@ -138,81 +142,112 @@ function tryDownstreams(req, deployment) {
     return preparedRule.resultPath ? preparedRule : null;
 }
 
+function updateCreateDeployment(info, oldDeployment) {
+    var nowMoment = moment(Date.now());
+    if (oldDeployment) {
+        info.name = oldDeployment.name;
+    }
+    info.created = oldDeployment ? oldDeployment.created : nowMoment.format();
+    info.updated = nowMoment.format();
+
+    var modified = moment(info.contentModified);
+    if (!modified.isValid()) {
+        modified = nowMoment;
+    }
+    info.contentModified = modified.format();
+
+    var oldDeploymentIndex;
+    if (oldDeployment) {
+        for (var i = 0; i < deployments.length; i++) {
+            var d = deployments[i];
+            if (d.id === oldDeployment.id) {
+                oldDeploymentIndex = i;
+                break;
+            }
+        }
+
+        deployments[oldDeploymentIndex] = info;
+    } else {
+        deployments.push(info);
+    }
+
+    cleanCache();
+
+    if (info.state === 'active') {
+        var preparedDeployment = { id: info.id, rules: [] };
+        (info.rules || [{}]).forEach(function(rule){
+            var newRule = clone(rule);
+            newRule.contentModified = modified.toDate().getTime();
+            if (newRule.match && newRule.match.path) {
+                newRule.matchPath = new RegExp(newRule.match.path);
+            }
+            newRule.ageInterval = newRule.age && newRule.age !== "0" ? humanInterval(newRule.age) : 0;
+
+            if (newRule.proxy) {
+                newRule.proxyDownstream = newRule.proxy.downstream;
+            }
+
+            if (newRule.rewrite) {
+                newRule.rewritePath = new RegExp(newRule.rewrite.path);
+                newRule.rewriteNewPath = newRule.rewrite.newPath;
+            }
+
+            preparedDeployment.rules.push(newRule);
+        });
+
+        if (oldDeploymentIndex) {
+            deploymentsPrepared[oldDeploymentIndex] = preparedDeployment;
+        } else {
+            deploymentsPrepared.push(preparedDeployment);
+        }
+    }
+}
+
 var service = {
     list: deployments,
 
-    createNewDeployment: function(info, callback) {
-        var now = Date.now();
-        var nowMoment = moment(now);
-        info.id = now;
-        info.created = nowMoment.format();
-        info.updated = nowMoment.format();
+    createOrUpdateDeployment: function(info, oldDeployment, dontUpdateData, callback) {
+        if (dontUpdateData) {
+            updateCreateDeployment(info, oldDeployment);
+            callback(null, info);
+        } else {
+            info.id = oldDeployment ? oldDeployment.id : randomstring.generate();
 
-        var modified = moment(info.contentModified);
-        if (!modified.isValid()) {
-            modified = nowMoment;
-        }
-        info.contentModified = modified.format();
+            // fetch data
+            var dataUrl = url.parse(info.dataUrl);
+            if (!dataUrl) {
+                callback('Couldn\'n resolve dataUrl');
+            }
 
-        // fetch data
-        var dataUrl = url.parse(info.dataUrl);
-        if (!dataUrl) {
-            callback('Couldn\'n resolve dataUrl');
-        }
+            var dataDir = './data/' + info.id;
+            rimraf.sync(dataDir);
+            fs.mkdirSync(dataDir);
 
-        var dataDir = './data/' + info.id;
-        fs.mkdirSync(dataDir);
+            var dataFile = dataDir + '/deployment.zip';
+            var client = request.createClient(dataUrl.protocol + '//' + dataUrl.host);
+            client.saveFile(dataUrl.path, dataFile, function(err, res, body) {
+                if (err) {
+                    callback(err);
+                } else {
+                    if (res.statusCode === 200) {
+                        var stat = fs.statSync(dataFile);
+                        info.dataSize = stat.size;
+                        if (info.dataSize) {
+                            unzip(dataFile, function (err) {
+                                fs.unlink(dataFile, function () {});
+                                updateCreateDeployment(info, oldDeployment);
 
-        var dataFile = dataDir + '/deployment.zip';
-        var client = request.createClient(dataUrl.protocol + '//' + dataUrl.host);
-        client.saveFile(dataUrl.path, dataFile, function(err, res, body) {
-            if (err) {
-                callback(err);
-            } else {
-                if (res.statusCode === 200) {
-                    var stat = fs.statSync(dataFile);
-                    info.dataSize = stat.size;
-                    if (info.dataSize) {
-                        unzip(dataFile, function (err) {
-                            fs.unlink(dataFile, function () {});
+                                callback(null, info);
+                            });
+                        } else {
 
-                            deployments.push(info);
-                            if (info.state === 'active') {
-                                var preparedDeployments = { id: info.id, rules: [] };
-                                (info.rules || [{}]).forEach(function(rule){
-                                    var newRule = clone(rule);
-                                    newRule.contentModified = modified.toDate().getTime();
-                                    if (newRule.match && newRule.match.path) {
-                                        newRule.matchPath = new RegExp(newRule.match.path);
-                                    }
-                                    newRule.ageInterval = newRule.age && newRule.age !== "0" ? humanInterval(newRule.age) : 0;
-
-                                    if (newRule.proxy) {
-                                        newRule.proxyDownstream = newRule.proxy.downstream;
-                                    }
-
-                                    if (newRule.rewrite) {
-                                        newRule.rewritePath = new RegExp(newRule.rewrite.path);
-                                        newRule.rewriteNewPath = newRule.rewrite.newPath;
-                                    }
-
-                                    preparedDeployments.rules.push(newRule);
-                                });
-                                deploymentsPrepared.push(preparedDeployments);
-                                cleanCache();
-                            }
-
-                            callback(null, info);
-                        });
+                        }
                     } else {
 
                     }
-                } else {
-
                 }
-            }
-        });
-
+            });
+        }
     },
 
     findRule: function (req, res, next) {
