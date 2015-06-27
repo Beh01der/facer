@@ -52,11 +52,11 @@ patch fields:
 var fs = require('fs');
 
 var express = require('express');
-var rimraf = require('rimraf');
 var moment = require('moment');
 var bodyParser = require('body-parser');
 var validator = require('node-validator');
 var clone = require('clone');
+var fse = require('fs-extra');
 
 var deploymentManager = require('./deployments');
 var serveStatic = require('./serve-static');
@@ -71,8 +71,7 @@ function error(message) {
     console.log('%s ERROR %s', moment(Date.now()).format(), message);
 }
 
-rimraf.sync(fileDir);
-fs.mkdirSync(fileDir);
+fse.ensureDirSync(fileDir);
 
 if (process.argv.length < 3 || (process.argv[2].length < 32 && process.argv[2] !== '--disable-security')) {
     error('Usage: node src/service.js [secure-token-at-least-32-chars]|--disable-security');

@@ -9,7 +9,6 @@ var clone = require('clone');
 var parseurl = require('parseurl');
 var humanInterval = require('human-interval');
 var randomstring = require("randomstring");
-var rimraf = require('rimraf');
 var fse = require('fs-extra');
 var path = require('path');
 
@@ -220,7 +219,7 @@ function updateDeploymentContent(dataDir, dataSourceUrl, callback) {
                     stat = fs.statSync(dataFile);
                     if (stat.size) {
                         unzip(dataFile, function (err) {
-                            rimraf.sync(dataFile);
+                            fse.removeSync(dataFile);
                             callback(null, stat.size);
                         });
                     } else {
@@ -242,7 +241,7 @@ function updateDeploymentContent(dataDir, dataSourceUrl, callback) {
                 dataFile = dataDir + '/' + dataSourcePath.base;
                 fse.copy(dataSourceUrl.path, dataFile, function (err) {
                     unzip(dataFile, function (err2) {
-                        rimraf.sync(dataFile);
+                        fse.removeSync(dataFile);
                         callback(err2, stat.size);
                     });
                 });
