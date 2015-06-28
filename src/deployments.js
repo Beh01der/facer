@@ -270,20 +270,31 @@ var service = {
         } else {
             info.id = oldDeployment ? oldDeployment.id : randomstring.generate();
 
-            // fetch data
-            var dataSourceUrl = url.parse(info.dataUrl);
-            if (!dataSourceUrl) {
-                callback('Couldn\'n resolve dataUrl');
-            }
-
             var dataDir = './data/' + info.id;
             fse.emptyDirSync(dataDir);
 
-            updateDeploymentContent(dataDir, dataSourceUrl, function(err, size) {
-                info.dataSize = size;
+            // fetch data
+            var dataSourceUrl;
+            if (info.dataUrl) {
+                dataSourceUrl = url.parse(info.dataUrl);
+                if (!dataSourceUrl) {
+                    callback('Couldn\'n resolve dataUrl');
+                }
+            }
+
+            if (dataSourceUrl) {
+                // get content
+                updateDeploymentContent(dataDir, dataSourceUrl, function(err, size) {
+                    info.dataSize = size;
+                    updateCreateDeployment(info, oldDeployment);
+                    callback(null, info);
+                });
+            } else {
+                // no content
+                info.dataSize = 0;
                 updateCreateDeployment(info, oldDeployment);
                 callback(null, info);
-            });
+            }
         }
     },
 

@@ -230,8 +230,8 @@ var deploymentRestModel = validator
     .isObject()
     .withRequired('name', validator.isString())
     .withRequired('state', validator.isString({ regex: /active|inactive/ }))
-    .withRequired('dataUrl', validator.isString())
     .withRequired('rules', validator.isArray(ruleRestModel, { min: 1, max: 30 }))
+    .withOptional('dataUrl', validator.isString())
     .withOptional('contentModified', validator.isIsoDateTime());
 
 var patchDeploymentRestModel = validator
