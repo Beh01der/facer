@@ -4,7 +4,11 @@ var DEPLOYMENTS_FILE = './data/deployments.json';
 var deployments = [];
 
 function save() {
-    fse.writeJsonSync(DEPLOYMENTS_FILE, deployments);
+    try {
+        fse.writeJsonSync(DEPLOYMENTS_FILE, deployments);
+    } catch(e) {
+        console.log('Error: could not write deployments file: %j', e);
+    }
 }
 
 module.exports = {
@@ -23,10 +27,11 @@ module.exports = {
         save();
     },
 
-    load: function(notUsed, callback) {
+    load: function(callback) {
         try {
             deployments = fse.readJsonSync(DEPLOYMENTS_FILE) || [];
         } catch (e) {
+            console.log('Error: could not read deployments file: %j', e);
             deployments = [];
         }
 

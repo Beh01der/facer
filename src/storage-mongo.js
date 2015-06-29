@@ -8,6 +8,7 @@ var clone = require('clone');
 var moment = require('moment');
 var unzip = require('unzip-wrapper');
 var archiver = require('archiver');
+var commander = require('commander');
 
 var DATA_DIR = './data';
 var deployments = [];
@@ -15,17 +16,16 @@ var deployments = [];
 var mongoDb, deploymentsCollection, gfs;
 
 function uploadDeploymentContent(deployment) {
-    // TODO check zip file - create if doesn't exist
     if (deployment.dataUrl) {
         var gridFsFile = deployment.id + '.zip';
         var localZipFile = DATA_DIR + '/' + deployment.id + '/' + gridFsFile;
 
         function upload() {
             // remove file from GridFS if exists
-            gfs.remove({ _id: deployment.id }, function(err) {
+            gfs.remove({ filename: gridFsFile }, function(err) {
                 var ws = gfs.createWriteStream({ filename: gridFsFile, _id: deployment.id });
-                ws.on('close', function (file) {
-                    console.log('Saved content to GridFS: %j', file);
+                ws.on('error', function (err) {
+                    console.log('Error uploading file "%s" content from GridFS: %j', gridFsFile, err);
                 });
 
                 fs.createReadStream(localZipFile).pipe(ws);
@@ -36,9 +36,12 @@ function uploadDeploymentContent(deployment) {
             var tmpZipFile = DATA_DIR + '/' + gridFsFile;
             var output = fs.createWriteStream(tmpZipFile);
             output.on('close', function() {
-                console.log('Generated zip file');
                 fse.move(tmpZipFile, localZipFile, function (err) {
-                    upload();
+                    if (err) {
+                        console.log('Error moving file "%s": %j', gridFsFile, err);
+                    } else {
+                        upload();
+                    }
                 });
             });
 
@@ -62,27 +65,36 @@ function downloadDeploymentContent(deployment) {
     var gridFsFile = deployment.id + '.zip';
     fse.emptyDirSync(dirName);
 
-    gfs.exist({filename: gridFsFile}, function (err, exists) {
-       if (exists) {
-           fse.emptyDirSync(dirName);
-           var zipFile = dirName + '/' + gridFsFile;
-           var rs = gfs.createReadStream({filename: gridFsFile});
-           var ws = fs.createWriteStream(zipFile);
-           ws.on('close', function (err) {
-               console.log('Downloaded content from GridFS');
-               unzip(zipFile, function (err) {
-                   console.log('Unzipped content: %s', err);
-               });
-           });
-           rs.pipe(ws);
-       }
+    gfs.exist({ filename: gridFsFile }, function (err, exists) {
+        if (err) {
+            console.log('Error GridFS file "%s" exist check: %j', gridFsFile, err);
+        } else {
+            if (exists) {
+                fse.emptyDirSync(dirName);
+                var zipFile = dirName + '/' + gridFsFile;
+                var rs = gfs.createReadStream({ filename: gridFsFile });
+                var ws = fs.createWriteStream(zipFile);
+                ws.on('close', function () {
+                    unzip(zipFile, function (err) {
+                        if (err) {
+                            console.log('Error unzipping file "%s": %j', gridFsFile, err);
+                        }
+                    });
+                }).on('error', function (err) {
+                    console.log('Error downloading file "%s" content from GridFS: %j', gridFsFile, err);
+                });
+               rs.pipe(ws);
+            }
+        }
     });
 }
 
 function removeDeploymentContent(deployment) {
     var gridFsFile = deployment.id + '.zip';
     gfs.remove({filename: gridFsFile}, function(err) {
-        console.log('Removed content from GridFS: %s', err);
+        if (err) {
+            console.log('Error removing file "%s" from GridFS: %j', gridFsFile, err);
+        }
     });
 }
 
@@ -107,24 +119,21 @@ module.exports = {
         deployments.push(deployment);
         deploymentsCollection.insert([toDb(deployment)], function(err){
             if (err) {
-                console.log('Error creating deployment %s', err);
+                console.log('Error creating deployment in MongoDB "%s": %j', deployment.id, err);
             } else {
                 uploadDeploymentContent(deployment);
-                console.log('Created deployment %s', deployment.id);
             }
         });
     },
 
     update: function(deployment, index, updateContent) {
-        // TODO pass 'update content' flag ?
-        deploymentsCollection.update({_id: deployment.id}, toDb(deployment), function (err) {
+        deploymentsCollection.update({ _id: deployment.id }, toDb(deployment), function (err) {
             if (err) {
                 console.log('Error updating deployment %s', err);
             } else {
                 if (updateContent) {
                     uploadDeploymentContent(deployment);
                 }
-                console.log('Updated deployment %s', deployment.id);
             }
         });
 
@@ -139,18 +148,17 @@ module.exports = {
                 console.log('Error removing deployment %s', err);
             } else {
                 removeDeploymentContent(deployment);
-                console.log('Removed deployment %s', deployment.id);
             }
         });
 
         deployments.splice(index, 1);
     },
 
-    load: function(mongoDbUrl, callback) {
+    load: function(callback) {
         fse.emptyDirSync(DATA_DIR);
-        MongoClient.connect('mongodb://' + mongoDbUrl, function(err, db) {
+        MongoClient.connect('mongodb://' + commander.mongoUrl, function(err, db) {
             if (err) {
-                throw new Error('Could not connect to MongoDB ' + mongoDbUrl + ': ' + err.message);
+                throw new Error('Could not connect to MongoDB ' + commander.mongoUrl + ': ' + err.message);
             } else {
                 mongoDb = db;
                 deploymentsCollection = db.collection('deployments');
@@ -169,7 +177,7 @@ module.exports = {
                         downloadDeploymentContent(deployment);
                     });
 
-                    console.log('Connected to MongoDB at %s. Loaded %d deployments', mongoDbUrl, deployments.length);
+                    console.log('Connected to MongoDB at %s. Loaded %d deployments', commander.mongoUrl, deployments.length);
                     callback(deployments);
                 });
             }

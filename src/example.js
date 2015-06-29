@@ -72,9 +72,9 @@ function patchDeployment(id, patch, callback) {
 }
 
 //deleteDeployment('syfZsICCudSUS8eebhA4mH1Jug4MwRdq');
-patchDeployment('IF2wdrNKtWEEN1hYVoKRQcaHiDMNFlhB', { state: 'active' });
+//patchDeployment('IF2wdrNKtWEEN1hYVoKRQcaHiDMNFlhB', { state: 'active' });
 
-/*
+
 createDeployment({
     "name": "memz-client-15-0528-0928",
     "state": "active",
@@ -123,4 +123,3 @@ createDeployment({
     //});
 });
 
-*/

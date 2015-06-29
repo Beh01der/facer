@@ -11,6 +11,7 @@ var humanInterval = require('human-interval');
 var randomstring = require("randomstring");
 var fse = require('fs-extra');
 var path = require('path');
+var commander = require('commander');
 
 var storage;
 
@@ -40,14 +41,14 @@ or
 
  */
 
-var mongoDbUrl = process.env.MONGO_URL;  // localhost:27017/setic
-if (mongoDbUrl) {
+// initialising storage and loading data
+if (commander.mongoUrl) {
     storage = require('./storage-mongo');
 } else {
     storage = require('./storage-fs');
 }
 
-storage.load(mongoDbUrl, function(loadedDeployments) {
+storage.load(function(loadedDeployments) {
     loadedDeployments.forEach(function (loadedDeployment) {
         updateCreateDeployment(loadedDeployment, true, null, true);
     });
@@ -124,6 +125,8 @@ function tryFiles(req, deployment) {
                 return;
             }
 
+            preparedRule.id = deployment.id;
+            preparedRule.name = deployment.name;
             preparedRule.md5 = file.md5;
             preparedRule.redirect = file.redirect;
             preparedRule.resultPath = file.path;
@@ -143,9 +146,10 @@ function tryDownstreams(req, deployment) {
         type: 'downstream'
     };
 
-    // TODO downstream must inherit rewrite if matches
     deployment.rules.forEach(function (rule) {
         if (rule.proxyDownstream && (!rule.matchPath || rule.matchPath.test(path))) {
+            preparedRule.id = deployment.id;
+            preparedRule.name = deployment.name;
             preparedRule.resultPath = path;
             preparedRule.downstream = rule.proxyDownstream;
             if (rule.rewritePath) {
@@ -195,7 +199,7 @@ function updateCreateDeployment(info, updateContent, oldDeployment, dontStore) {
     cleanCache();
 
     if (info.state === 'active') {
-        var preparedDeployment = { id: info.id, rules: [] };
+        var preparedDeployment = { id: info.id, name: info.name, rules: [] };
         (info.rules || [{}]).forEach(function(rule){
             var newRule = clone(rule);
             newRule.contentModified = modified.toDate().getTime();
@@ -236,19 +240,26 @@ function updateDeploymentContent(info, dataSourceUrl, callback) {
         var client = request.createClient(dataSourceUrl.protocol + '//' + dataSourceUrl.host);
         client.saveFile(dataSourceUrl.path, dataFile, function(err, res, body) {
             if (err) {
+                console.log('Error downloading zip file from "%s": %j', dataSourceUrl, err);
                 callback(err);
             } else {
                 if (res.statusCode === 200) {
                     stat = fs.statSync(dataFile);
                     if (stat.size) {
                         unzip(dataFile, function (err) {
-                            callback(null, stat.size);
+                            if (err) {
+                                console.log('Error unzipping file "%s": %j', dataFile, err);
+                            }
+
+                            callback(err, stat.size);
                         });
                     } else {
-
+                        console.log('Error downloaded file "%s" has no content', dataFile);
+                        callback({ message: 'Error downloaded file has no content' });
                     }
                 } else {
-
+                    console.log('Error could not download file "%s": %d', dataFile, res.statusCode);
+                    callback({ message: 'Error could not download file' });
                 }
             }
         });
@@ -257,24 +268,50 @@ function updateDeploymentContent(info, dataSourceUrl, callback) {
         var dataSourcePath = path.parse(dataSourceUrl.path);
         if (dataSourcePath.ext === '.zip') {
             // local zip file
-            // TODO what if path is invalid ? handle errors
-            stat = fs.statSync(dataSourceUrl.path);
-            if (stat.isFile() && stat.size) {
-                fse.copy(dataSourceUrl.path, dataFile, function (err) {
-                    unzip(dataFile, function (err2) {
-                        callback(err2, stat.size);
-                    });
-                });
-            } else {
+            try {
+                stat = fs.statSync(dataSourceUrl.path);
+                if (stat.isFile() && stat.size) {
+                    fse.copy(dataSourceUrl.path, dataFile, function (err) {
+                        if (err) {
+                            console.log('Error copying file "%s": %j', dataSourceUrl.path, err);
+                            callback(err);
+                        } else {
+                            unzip(dataFile, function (err2) {
+                                if (err2) {
+                                    console.log('Error unzipping file "%s": %j', dataFile, err2);
+                                }
 
+                                callback(err2, stat.size);
+                            });
+                        }
+                    });
+                } else {
+                    console.log('Error: invalid file "%s"', dataSourceUrl.path);
+                    callback({message: 'Error: invalid file'});
+                }
+            } catch(e) {
+                console.log('Error: invalid file "%s": %j', dataSourceUrl.path, e);
+                callback({message: 'Error: invalid file'});
             }
         } else {
             // local dir
-            stat = fs.statSync(dataSourceUrl.path);
-            if (stat.isDirectory()) {
-                fse.copy(dataSourceUrl.path, dataDir, function(err) {
-                    callback(err, 10000);
-                });
+            try {
+                stat = fs.statSync(dataSourceUrl.path);
+                if (stat.isDirectory()) {
+                    fse.copy(dataSourceUrl.path, dataDir, function(err) {
+                        if (err) {
+                            console.log('Error: invalid file "%s": %j', dataSourceUrl.path, e);
+                        }
+
+                        callback(err, 10000);
+                    });
+                } else {
+                    console.log('Error: not a directory "%s"', dataSourceUrl.path);
+                    callback({message: 'Error: not a directory'});
+                }
+            } catch (e) {
+                console.log('Error: invalid file "%s": %j', dataSourceUrl.path, e);
+                callback({message: 'Error: invalid file'});
             }
         }
     }
@@ -292,7 +329,7 @@ function createOrUpdateDeployment(info, oldDeployment, dontUpdateContent, callba
         if (info.dataUrl) {
             dataSourceUrl = url.parse(info.dataUrl);
             if (!dataSourceUrl) {
-                callback('Couldn\'n resolve dataUrl');
+                return callback({ message: 'Could not resolve dataUrl' });
             }
         }
 

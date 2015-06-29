@@ -5,8 +5,10 @@ var proxy = httpProxy.createProxyServer({});
 proxy.on('error', function (err, req, res) {
     var rule = req.rule;
 
+    var errorInfo = 'Bad Gateway for: ' + (rule ? rule.downstream + rule.resultPath : null || req.url) + ' - ' + err;
+    req.errorInfo = errorInfo;
     res.writeHead(502, {'Content-Type': 'text/plain'});
-    res.write('Bad Gateway for: ' + (rule ? rule.downstream + rule.resultPath : null || req.url) + ' - ' + err);
+    res.write(errorInfo);
     res.end();
 });
 
@@ -25,5 +27,4 @@ module.exports = function (req, res, next) {
     } else {
         next();
     }
-
 };

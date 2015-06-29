@@ -49,40 +49,36 @@ patch fields:
 
  */
 
+var fse = require('fs-extra');
+var commander = require('commander');
+commander
+    .version(fse.readJsonSync('package.json').version)
+    .option('-t, --token <value>', 'secure token')
+    .option('-p, --port <n>', 'service port', 3000, parseInt)
+    .option('-m, --mongo-url <value>', 'MongoDB connection url "host:[port]/db"') // localhost:27017/setic
+    .option('-v, --verbose', 'verbose output')
+    .parse(process.argv);
+
+if (!commander.token) {
+    console.log('Warning!!! Security is disabled for this service! It allows public access to all service funcitonality!');
+    console.log('To enable security, pass secure token as a parameter (must be at least 32 char long).');
+    console.log('Example: node src/service.js -t D9LEwTq1hkZOQhEdiH3LGLZ1vELO283H');
+}
+
 var express = require('express');
 var moment = require('moment');
 var bodyParser = require('body-parser');
 var validator = require('node-validator');
 var clone = require('clone');
-var fse = require('fs-extra');
+var morgan = require('morgan');
 
 var deploymentManager = require('./deployments');
 var serveStatic = require('./serve-static');
 var serveDownstream = require('./serve-downstream');
 
 var fileDir = './data';
-function log(message) {
-    console.log('%s INFO %s', moment(Date.now()).format(), message);
-}
-
-function error(message) {
-    console.log('%s ERROR %s', moment(Date.now()).format(), message);
-}
 
 fse.ensureDirSync(fileDir);
-
-if (process.argv.length < 3 || (process.argv[2].length < 32 && process.argv[2] !== '--disable-security')) {
-    error('Usage: node src/service.js [secure-token-at-least-32-chars]|--disable-security');
-    process.exit(1);
-}
-
-var secureToken = process.argv[2];
-if (secureToken === '--disable-security') {
-    secureToken = undefined;
-    log('Warning!!! Security is disabled for this service! It allows public access to all service funcitonality!');
-    log('To enable security, pass secure token as a parameter (must be at least 32 char long).');
-    log('Example: node src/service.js D9LEwTq1hkZOQhEdiH3LGLZ1vELO283H');
-}
 
 var app = express();
 
@@ -95,14 +91,16 @@ function noCache(req, res, next) {
 
 function authorise(req, res, next) {
     // authorisation check
-    if (secureToken) {
+    if (commander.token) {
         var token = req.header('X-Auth-Token') || req.query.token;
-        if (secureToken !== token) {
+        if (commander.token !== token) {
             // authentication failed
-            return res.status(401).json({
-                code: 'ERROR',
-                message: 'Access Denied'
-            });
+            return res.status(401)
+                .json({
+                    code: 'ERROR',
+                    time: moment().format(),
+                    message: 'Access Denied'
+                });
         }
     }
 
@@ -114,13 +112,17 @@ function returnDeploymentInfo(req, res) {
 
     res.json({
         code: 'OK',
-        time: Date.now(),
+        time: moment().format(),
         deployment: deployment
     });
 }
 
 function returnDeploymentList(req, res) {
-    res.json(deploymentManager.list);
+    res.json({
+        code: 'OK',
+        time: moment().format(),
+        deployments: deploymentManager.list
+    });
 }
 
 function patchDeployment(req, res, next) {
@@ -157,7 +159,7 @@ function createOrUpdateDeployment(req, res, next) {
             delete req.deployment;
         }
 
-        next();
+        next(err);
     });
 }
 
@@ -191,10 +193,11 @@ function findDeployment(req, res, next) {
         req.deployment = deployment;
         next();
     } else {
-        res.status(404).json({
-            code: 'ERROR',
-            message: 'Not found',
-            time: Date.now()
+        res.status(404)
+            .json({
+                code: 'ERROR',
+                time: moment().format(),
+                message: 'Deployment not found'
         });
     }
 }
@@ -239,6 +242,31 @@ var patchDeploymentRestModel = validator
     .withOptional('rules', validator.isArray(ruleRestModel, { min: 1, max: 30 }))
     .withOptional('contentModified', validator.isIsoDateTime());
 
+// set up logging
+morgan.token('error', function (req) {
+    var errorInfo = req.errorInfo;
+    if (errorInfo) {
+        errorInfo = errorInfo.replace(/\s+/g, ' ');
+    }
+
+    return errorInfo || '';
+});
+
+if (commander.verbose) {
+    morgan.token('rule', function (req) {
+        var rule = req.rule;
+        return rule ? rule.name + ':' + rule.type[0] : '';
+    });
+
+    app.use(morgan(':date[iso] [:rule] :method :url :status :res[content-length] - :response-time ms | :error'));
+} else {
+    var isControlApi = /^\/control\/deployment/;
+    app.use(
+        morgan(':date[iso] :method :url :status :res[content-length] - :response-time ms | :error',
+        { skip: function (req, res) { return !isControlApi.test(req.url) && res.statusCode < 400; } })
+    );
+}
+
 app.all('/control/deployment*', noCache, authorise);
 
 app.get('/control/deployments', returnDeploymentList);
@@ -257,9 +285,17 @@ app.all('*', deploymentManager.findRule, serveStatic, serveDownstream);
 
 // handle all unexpected errors
 app.disable('x-powered-by');
+
 app.use(function(err, req, res, next) {
     if (err) {
-        error('Internal server error: ' + JSON.stringify(err));
+        var errorInfo = '';
+        if (err.message) {
+            errorInfo += err.message;
+        }
+
+        if (err.body) {
+            errorInfo += ': ' + err.body;
+        }
 
         res.status(400).json({
             code: 'ERROR',
@@ -268,7 +304,7 @@ app.use(function(err, req, res, next) {
     }
 });
 
-var servicePort = process.env.SERVICE_PORT || 3000;
+var servicePort = commander.port;
 app.listen(servicePort, function () {
-    log('Listening on port ' + servicePort);
+    console.log('Listening on port ' + servicePort);
 });
