@@ -49,8 +49,6 @@ patch fields:
 
  */
 
-var fs = require('fs');
-
 var express = require('express');
 var moment = require('moment');
 var bodyParser = require('body-parser');
@@ -229,14 +227,14 @@ var ruleRestModel = validator
 var deploymentRestModel = validator
     .isObject()
     .withRequired('name', validator.isString())
-    .withRequired('state', validator.isString({ regex: /active|inactive/ }))
+    .withRequired('state', validator.isString({ regex: /^(active|inactive)$/ }))
     .withRequired('rules', validator.isArray(ruleRestModel, { min: 1, max: 30 }))
     .withOptional('dataUrl', validator.isString())
     .withOptional('contentModified', validator.isIsoDateTime());
 
 var patchDeploymentRestModel = validator
     .isObject()
-    .withOptional('state', validator.isString({ regex: /active|inactive/ }))
+    .withOptional('state', validator.isString({ regex: /^(active|inactive)$/ }))
     .withOptional('dataUrl', validator.isString())
     .withOptional('rules', validator.isArray(ruleRestModel, { min: 1, max: 30 }))
     .withOptional('contentModified', validator.isIsoDateTime());

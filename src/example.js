@@ -20,25 +20,67 @@ function createDeployment(deployment, callback) {
     });
 }
 
+function updateDeployment(deployment, callback) {
+    var client = request.createClient(baseUrl);
+    client.headers['X-Auth-Token'] = apiAccessToken;
+
+    client.put('/control/deployments/' + deployment.name, deployment, function(err, res, body) {
+        if (err) {
+            console.error(err);
+        } else {
+            console.log('%d : %j', res.statusCode, body);
+        }
+
+        if (callback) {
+            callback();
+        }
+    });
+}
+
+function patchDeployment(id, patch, callback) {
+    var client = request.createClient(baseUrl);
+    client.headers['X-Auth-Token'] = apiAccessToken;
+
+    client.patch('/control/deployments/' + id, patch, function(err, res, body) {
+        if (err) {
+            console.error(err);
+        } else {
+            console.log('%d : %j', res.statusCode, body);
+        }
+
+        if (callback) {
+            callback();
+        }
+    });
+}
+
+patchDeployment('436GdhiZhb3xvLwBu4mInW5UnAnL5Ssr', { state: 'inactive' });
+
+/*
+
 createDeployment({
     "name": "memz-client-15-0528-0928",
     "state": "active",
     "contentModified": "2015-01-01T00:00:00+10:00",
-    "dataUrl": "http://localhost:3001/1fP7JPjn6bufadJ9MAV3OxgP9kgXHeji/files/0",
+    //"dataUrl": "/Users/andrey/Work/Projects/Memability/Memability4all/build/deploy/public",
+    "dataUrl": "http://localhost:3001/FgOmPuNV22cWkRDVvRlUYA3DFvSz84vc/files/0",
     "rules": [
         {
-            //"age": "0",
-            "age": "8 hours"//,
-            //"rewrite": {
-            //    "path": "/cloud(.*)",
-            //    "newPath": "$1"
-            //}
+            "age": "8 hours"
         },
         {
-            //"age": "0",
             "age": "1 year",
             "match": {
                 "path": "[.](js|css|gif|jpe?g|png|woff|ico|eot|svg|ttf)$"
+            }
+        },
+        {
+            "proxy": {
+                "downstream": "http://localhost:3002"
+            },
+            "rewrite": {
+                "path": "^/cloud(.*)",
+                "newPath": "$1"
             }
         }
     ]
@@ -46,7 +88,7 @@ createDeployment({
     //createDeployment({
     //    "name": "memz-client-15-0623-1905",
     //    "state": "active",
-    //    "dataUrl": "http://localhost:3001/2K2GcfZXeGKokJjxKj98pMWup7GWf2zh/files/0",
+    //    "dataUrl": "http://localhost:3001/Zx9mSexy4s7CTmVLR7xmGUhxyu0LAbks/files/0",
     //    "rules": [
     //        {
     //            //"age": "0",
@@ -62,3 +104,5 @@ createDeployment({
     //    ]
     //});
 });
+
+*/

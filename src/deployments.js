@@ -12,6 +12,7 @@ var randomstring = require("randomstring");
 var fse = require('fs-extra');
 var path = require('path');
 
+var storage = require('./storage-fs');
 
 var deployments = [];
 var deploymentsPrepared = [];
@@ -38,6 +39,12 @@ or
 }
 
  */
+
+storage.load(function(loadedDeployments) {
+    loadedDeployments.forEach(function (loadedDeployment) {
+        updateCreateDeployment(loadedDeployment, null, true);
+    });
+});
 
 function cleanCache() {
     deploymentsPrepared = [];
@@ -143,7 +150,7 @@ function tryDownstreams(req, deployment) {
     return preparedRule.resultPath ? preparedRule : null;
 }
 
-function updateCreateDeployment(info, oldDeployment) {
+function updateCreateDeployment(info, oldDeployment, dontStore) {
     var nowMoment = moment(Date.now());
     if (oldDeployment) {
         info.name = oldDeployment.name;
@@ -168,8 +175,14 @@ function updateCreateDeployment(info, oldDeployment) {
         }
 
         deployments[oldDeploymentIndex] = info;
+        if (!dontStore) {
+            storage.update(info, oldDeploymentIndex);
+        }
     } else {
         deployments.push(info);
+        if (!dontStore) {
+            storage.create(info);
+        }
     }
 
     cleanCache();
@@ -260,43 +273,45 @@ function updateDeploymentContent(dataDir, dataSourceUrl, callback) {
     }
 }
 
+function createOrUpdateDeployment(info, oldDeployment, dontUpdateContent, callback) {
+    if (dontUpdateContent) {
+        updateCreateDeployment(info, oldDeployment);
+        callback(null, info);
+    } else {
+        info.id = oldDeployment ? oldDeployment.id : randomstring.generate();
+
+        var dataDir = './data/' + info.id;
+        fse.emptyDirSync(dataDir);
+
+        // fetch data
+        var dataSourceUrl;
+        if (info.dataUrl) {
+            dataSourceUrl = url.parse(info.dataUrl);
+            if (!dataSourceUrl) {
+                callback('Couldn\'n resolve dataUrl');
+            }
+        }
+
+        if (dataSourceUrl) {
+            // get content
+            updateDeploymentContent(dataDir, dataSourceUrl, function(err, size) {
+                info.dataSize = size;
+                updateCreateDeployment(info, oldDeployment);
+                callback(null, info);
+            });
+        } else {
+            // no content
+            info.dataSize = 0;
+            updateCreateDeployment(info, oldDeployment);
+            callback(null, info);
+        }
+    }
+}
+
 var service = {
     list: deployments,
 
-    createOrUpdateDeployment: function(info, oldDeployment, dontUpdateContent, callback) {
-        if (dontUpdateContent) {
-            updateCreateDeployment(info, oldDeployment);
-            callback(null, info);
-        } else {
-            info.id = oldDeployment ? oldDeployment.id : randomstring.generate();
-
-            var dataDir = './data/' + info.id;
-            fse.emptyDirSync(dataDir);
-
-            // fetch data
-            var dataSourceUrl;
-            if (info.dataUrl) {
-                dataSourceUrl = url.parse(info.dataUrl);
-                if (!dataSourceUrl) {
-                    callback('Couldn\'n resolve dataUrl');
-                }
-            }
-
-            if (dataSourceUrl) {
-                // get content
-                updateDeploymentContent(dataDir, dataSourceUrl, function(err, size) {
-                    info.dataSize = size;
-                    updateCreateDeployment(info, oldDeployment);
-                    callback(null, info);
-                });
-            } else {
-                // no content
-                info.dataSize = 0;
-                updateCreateDeployment(info, oldDeployment);
-                callback(null, info);
-            }
-        }
-    },
+    createOrUpdateDeployment: createOrUpdateDeployment,
 
     findRule: function (req, res, next) {
         var url = parseurl(req);
@@ -353,6 +368,8 @@ var service = {
             if (d.id === deployment.id) {
                 deployments.splice(i, 1);
                 deploymentsPrepared.splice(i, 1);
+                storage.remove(i);
+                fse.removeSync('./data/' + d.id);
                 cleanCache();
                 return;
             }
