@@ -13,7 +13,7 @@ module.exports = {
         save();
     },
 
-    update: function(deployment, index) {
+    update: function(deployment, index, updateContent) {
         deployments[index] = deployment;
         save();
     },

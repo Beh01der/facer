@@ -71,8 +71,8 @@ function patchDeployment(id, patch, callback) {
     });
 }
 
-deleteDeployment('syfZsICCudSUS8eebhA4mH1Jug4MwRdq');
-//patchDeployment('P039UIOtDwS89G73IZBW0YS79BoHrfQ0', { state: 'inactive' });
+//deleteDeployment('syfZsICCudSUS8eebhA4mH1Jug4MwRdq');
+patchDeployment('IF2wdrNKtWEEN1hYVoKRQcaHiDMNFlhB', { state: 'active' });
 
 /*
 createDeployment({

@@ -14,7 +14,7 @@ var deployments = [];
 
 var mongoDb, deploymentsCollection, gfs;
 
-function uploadDeploymentContent(deployment, callback) {
+function uploadDeploymentContent(deployment) {
     // TODO check zip file - create if doesn't exist
     if (deployment.dataUrl) {
         var gridFsFile = deployment.id + '.zip';
@@ -26,7 +26,6 @@ function uploadDeploymentContent(deployment, callback) {
                 var ws = gfs.createWriteStream({ filename: gridFsFile, _id: deployment.id });
                 ws.on('close', function (file) {
                     console.log('Saved content to GridFS: %j', file);
-                    //callback();
                 });
 
                 fs.createReadStream(localZipFile).pipe(ws);
@@ -55,8 +54,6 @@ function uploadDeploymentContent(deployment, callback) {
             upload();
         }
 
-    } else {
-        //callback();
     }
 }
 
@@ -118,13 +115,15 @@ module.exports = {
         });
     },
 
-    update: function(deployment, index) {
+    update: function(deployment, index, updateContent) {
         // TODO pass 'update content' flag ?
         deploymentsCollection.update({_id: deployment.id}, toDb(deployment), function (err) {
             if (err) {
                 console.log('Error updating deployment %s', err);
             } else {
-                uploadDeploymentContent(deployment);
+                if (updateContent) {
+                    uploadDeploymentContent(deployment);
+                }
                 console.log('Updated deployment %s', deployment.id);
             }
         });

@@ -49,7 +49,7 @@ if (mongoDbUrl) {
 
 storage.load(mongoDbUrl, function(loadedDeployments) {
     loadedDeployments.forEach(function (loadedDeployment) {
-        updateCreateDeployment(loadedDeployment, null, true);
+        updateCreateDeployment(loadedDeployment, true, null, true);
     });
 });
 
@@ -157,7 +157,7 @@ function tryDownstreams(req, deployment) {
     return preparedRule.resultPath ? preparedRule : null;
 }
 
-function updateCreateDeployment(info, oldDeployment, dontStore) {
+function updateCreateDeployment(info, updateContent, oldDeployment, dontStore) {
     var nowMoment = moment(Date.now());
     if (oldDeployment) {
         info.name = oldDeployment.name;
@@ -183,7 +183,7 @@ function updateCreateDeployment(info, oldDeployment, dontStore) {
 
         deployments[oldDeploymentIndex] = info;
         if (!dontStore) {
-            storage.update(info, oldDeploymentIndex);
+            storage.update(info, oldDeploymentIndex, updateContent);
         }
     } else {
         deployments.push(info);
@@ -282,7 +282,7 @@ function updateDeploymentContent(info, dataSourceUrl, callback) {
 
 function createOrUpdateDeployment(info, oldDeployment, dontUpdateContent, callback) {
     if (dontUpdateContent) {
-        updateCreateDeployment(info, oldDeployment);
+        updateCreateDeployment(info, !dontUpdateContent, oldDeployment);
         callback(null, info);
     } else {
         info.id = oldDeployment ? oldDeployment.id : randomstring.generate();
@@ -300,13 +300,13 @@ function createOrUpdateDeployment(info, oldDeployment, dontUpdateContent, callba
             // get content
             updateDeploymentContent(info, dataSourceUrl, function(err, size) {
                 info.dataSize = size;
-                updateCreateDeployment(info, oldDeployment);
+                updateCreateDeployment(info, !dontUpdateContent, oldDeployment);
                 callback(null, info);
             });
         } else {
             // no content
             info.dataSize = 0;
-            updateCreateDeployment(info, oldDeployment);
+            updateCreateDeployment(info, !dontUpdateContent, oldDeployment);
             callback(null, info);
         }
     }
