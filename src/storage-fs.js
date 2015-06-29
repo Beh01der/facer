@@ -23,12 +23,14 @@ module.exports = {
         save();
     },
 
-    load: function(callback) {
+    load: function(notUsed, callback) {
         try {
             deployments = fse.readJsonSync(DEPLOYMENTS_FILE) || [];
         } catch (e) {
             deployments = [];
         }
+
+        console.log('Using FS data storage. Loaded %d deployments', deployments.length);
 
         callback(deployments);
     }

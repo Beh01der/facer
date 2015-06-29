@@ -9,6 +9,7 @@
   "author": "Andrey Chausenko <andrey.chausenko@gmail.com> (https://memz.co)",
   "license": "ISC",
   "dependencies": {
+    "archiver": "^0.14.4",
     "body-parser": "^1.13.1",
     "clone": "^1.0.2",
     "express": "^4.13.0",
@@ -18,6 +19,7 @@
     "http-proxy": "^1.11.1",
     "human-interval": "^0.1.4",
     "moment": "^2.10.3",
+    "mongodb": "^2.0.35",
     "mongoose": "^4.0.5",
     "mongoose-schema-extend": "^0.1.7",
     "node-validator": "^0.1.13",

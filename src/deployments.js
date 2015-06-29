@@ -12,7 +12,7 @@ var randomstring = require("randomstring");
 var fse = require('fs-extra');
 var path = require('path');
 
-var storage = require('./storage-fs');
+var storage;
 
 var deployments = [];
 var deploymentsPrepared = [];
@@ -40,7 +40,14 @@ or
 
  */
 
-storage.load(function(loadedDeployments) {
+var mongoDbUrl = process.env.MONGO_URL;  // localhost:27017/setic
+if (mongoDbUrl) {
+    storage = require('./storage-mongo');
+} else {
+    storage = require('./storage-fs');
+}
+
+storage.load(mongoDbUrl, function(loadedDeployments) {
     loadedDeployments.forEach(function (loadedDeployment) {
         updateCreateDeployment(loadedDeployment, null, true);
     });
@@ -217,12 +224,15 @@ function updateCreateDeployment(info, oldDeployment, dontStore) {
     }
 }
 
-function updateDeploymentContent(dataDir, dataSourceUrl, callback) {
+function updateDeploymentContent(info, dataSourceUrl, callback) {
+    var dataDir = './data/' + info.id;
+    var dataFile = dataDir + '/' + info.id + '.zip';
+
+    fse.emptyDirSync(dataDir);
+
     var stat;
-    var dataFile;
     if (dataSourceUrl.protocol === 'http:') {
         // download zip file from http (filex)
-        dataFile = dataDir + '/deployment.zip';
         var client = request.createClient(dataSourceUrl.protocol + '//' + dataSourceUrl.host);
         client.saveFile(dataSourceUrl.path, dataFile, function(err, res, body) {
             if (err) {
@@ -232,7 +242,6 @@ function updateDeploymentContent(dataDir, dataSourceUrl, callback) {
                     stat = fs.statSync(dataFile);
                     if (stat.size) {
                         unzip(dataFile, function (err) {
-                            fse.removeSync(dataFile);
                             callback(null, stat.size);
                         });
                     } else {
@@ -251,10 +260,8 @@ function updateDeploymentContent(dataDir, dataSourceUrl, callback) {
             // TODO what if path is invalid ? handle errors
             stat = fs.statSync(dataSourceUrl.path);
             if (stat.isFile() && stat.size) {
-                dataFile = dataDir + '/' + dataSourcePath.base;
                 fse.copy(dataSourceUrl.path, dataFile, function (err) {
                     unzip(dataFile, function (err2) {
-                        fse.removeSync(dataFile);
                         callback(err2, stat.size);
                     });
                 });
@@ -280,9 +287,6 @@ function createOrUpdateDeployment(info, oldDeployment, dontUpdateContent, callba
     } else {
         info.id = oldDeployment ? oldDeployment.id : randomstring.generate();
 
-        var dataDir = './data/' + info.id;
-        fse.emptyDirSync(dataDir);
-
         // fetch data
         var dataSourceUrl;
         if (info.dataUrl) {
@@ -294,7 +298,7 @@ function createOrUpdateDeployment(info, oldDeployment, dontUpdateContent, callba
 
         if (dataSourceUrl) {
             // get content
-            updateDeploymentContent(dataDir, dataSourceUrl, function(err, size) {
+            updateDeploymentContent(info, dataSourceUrl, function(err, size) {
                 info.dataSize = size;
                 updateCreateDeployment(info, oldDeployment);
                 callback(null, info);

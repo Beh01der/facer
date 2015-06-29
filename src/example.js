@@ -3,6 +3,23 @@ var request = require('request-json');
 var baseUrl = 'http://localhost:3000';
 var apiAccessToken = 'ZmM2NzMzMWZiMTkxYjhhNmRkMjQzMzBlMzM0ZWE3NzM5NzU1NmRlYjc4YzM5OGRmYjQ5Yzk';//'put your token here';
 
+function deleteDeployment(id, callback) {
+    var client = request.createClient(baseUrl);
+    client.headers['X-Auth-Token'] = apiAccessToken;
+
+    client.del('/control/deployments/' + id, function(err, res, body) {
+        if (err) {
+            console.error(err);
+        } else {
+            console.log('%d : %j', res.statusCode, body);
+        }
+
+        if (callback) {
+            callback();
+        }
+    });
+}
+
 function createDeployment(deployment, callback) {
     var client = request.createClient(baseUrl);
     client.headers['X-Auth-Token'] = apiAccessToken;
@@ -54,16 +71,17 @@ function patchDeployment(id, patch, callback) {
     });
 }
 
-patchDeployment('436GdhiZhb3xvLwBu4mInW5UnAnL5Ssr', { state: 'inactive' });
+deleteDeployment('syfZsICCudSUS8eebhA4mH1Jug4MwRdq');
+//patchDeployment('P039UIOtDwS89G73IZBW0YS79BoHrfQ0', { state: 'inactive' });
 
 /*
-
 createDeployment({
     "name": "memz-client-15-0528-0928",
     "state": "active",
     "contentModified": "2015-01-01T00:00:00+10:00",
-    //"dataUrl": "/Users/andrey/Work/Projects/Memability/Memability4all/build/deploy/public",
-    "dataUrl": "http://localhost:3001/FgOmPuNV22cWkRDVvRlUYA3DFvSz84vc/files/0",
+    //"dataUrl": "/Users/andrey/Tmp/deployment-15-0528-0928.zip",
+    "dataUrl": "/Users/andrey/Work/Projects/Memability/Memability4all/build/deploy/public",
+    //"dataUrl": "http://localhost:3001/FgOmPuNV22cWkRDVvRlUYA3DFvSz84vc/files/0",
     "rules": [
         {
             "age": "8 hours"
