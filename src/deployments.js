@@ -214,7 +214,14 @@ function updateCreateDeployment(info, updateContent, oldDeployment, dontStore) {
             }
 
             if (newRule.age && newRule.age !== "0") {
-                newRule.ageInterval = humanInterval(newRule.age);
+                try {
+                    newRule.ageInterval = humanInterval(newRule.age);
+                } catch (e) {
+                }
+            }
+
+            if (!newRule.ageInterval && newRule.age !== undefined) {
+                newRule.ageInterval = 0;
             }
 
             if (newRule.proxy) {
