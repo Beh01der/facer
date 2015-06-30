@@ -299,6 +299,8 @@ app.use(function(err, req, res, next) {
             errorInfo += ': ' + err.body;
         }
 
+        req.errorInfo = errorInfo;
+
         res.status(400).json({
             code: 'ERROR',
             message: 'Invalid request'

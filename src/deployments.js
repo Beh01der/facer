@@ -235,7 +235,7 @@ function updateDeploymentContent(info, dataSourceUrl, callback) {
     fse.emptyDirSync(dataDir);
 
     var stat;
-    if (dataSourceUrl.protocol === 'http:') {
+    if (dataSourceUrl.protocol) {
         // download zip file from http (filex)
         var client = request.createClient(dataSourceUrl.protocol + '//' + dataSourceUrl.host);
         client.saveFile(dataSourceUrl.path, dataFile, function(err, res, body) {
