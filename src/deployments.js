@@ -130,12 +130,18 @@ function tryFiles(req, deployment) {
             preparedRule.md5 = file.md5;
             preparedRule.redirect = file.redirect;
             preparedRule.resultPath = file.path;
-            preparedRule.ageInterval = rule.ageInterval;
             preparedRule.contentModified = rule.contentModified;
+            if (rule.ageInterval !== undefined) {
+                preparedRule.ageInterval = rule.ageInterval;
+            }
         }
     });
 
-    return preparedRule.ageInterval !== undefined ? preparedRule : null;
+    if (!preparedRule.ageInterval) {
+        preparedRule.ageInterval = 0;
+    }
+
+    return preparedRule.md5 !== undefined ? preparedRule : null;
 }
 
 function tryDownstreams(req, deployment) {
@@ -206,7 +212,10 @@ function updateCreateDeployment(info, updateContent, oldDeployment, dontStore) {
             if (newRule.match && newRule.match.path) {
                 newRule.matchPath = new RegExp(newRule.match.path);
             }
-            newRule.ageInterval = newRule.age && newRule.age !== "0" ? humanInterval(newRule.age) : 0;
+
+            if (newRule.age && newRule.age !== "0") {
+                newRule.ageInterval = humanInterval(newRule.age);
+            }
 
             if (newRule.proxy) {
                 newRule.proxyDownstream = newRule.proxy.downstream;

@@ -303,6 +303,7 @@ app.use(function(err, req, res, next) {
 
         res.status(400).json({
             code: 'ERROR',
+            time: moment().format(),
             message: 'Invalid request'
         });
     }

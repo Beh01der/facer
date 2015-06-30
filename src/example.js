@@ -79,8 +79,8 @@ createDeployment({
     "name": "memz-client-15-0528-0928",
     "state": "active",
     "contentModified": "2015-01-01T00:00:00+10:00",
-    //"dataUrl": "/Users/andrey/Tmp/deployment-15-0528-0928.zip",
-    "dataUrl": "/Users/andrey/Work/Projects/Memability/Memability4all/build/deploy/public",
+    "dataUrl": "/Users/andrey/Tmp/deployment-15-0528-0928.zip",
+    //"dataUrl": "/Users/andrey/Work/Projects/Memability/Memability4all/build/deploy/public",
     //"dataUrl": "http://localhost:3001/FgOmPuNV22cWkRDVvRlUYA3DFvSz84vc/files/0",
     "rules": [
         {
