@@ -51,8 +51,10 @@ patch fields:
 
 var fse = require('fs-extra');
 var commander = require('commander');
+var pack = fse.readJsonSync('package.json');
+
 commander
-    .version(fse.readJsonSync('package.json').version)
+    .version(pack.version)
     .option('-t, --token <value>', 'secure token')
     .option('-p, --port <n>', 'service port', 3000, parseInt)
     .option('-m, --mongo-url <value>', 'MongoDB connection url "host:[port]/db"') // localhost:27017/setic
@@ -60,7 +62,7 @@ commander
     .parse(process.argv);
 
 if (!commander.token) {
-    console.log('Warning!!! Security is disabled for this service! It allows public access to all service funcitonality!');
+    console.log('Warning!!! Security is disabled for this service! It allows public access to all service functionality!');
     console.log('To enable security, pass secure token as a parameter (must be at least 32 char long).');
     console.log('Example: node src/service.js -t D9LEwTq1hkZOQhEdiH3LGLZ1vELO283H');
 }
@@ -304,7 +306,6 @@ app.use(function(err, req, res, next) {
     }
 });
 
-var servicePort = commander.port;
-app.listen(servicePort, function () {
-    console.log('Listening on port ' + servicePort);
+app.listen(commander.port, function () {
+    console.log('setic ' + pack.version + ' listening on port ' + commander.port);
 });

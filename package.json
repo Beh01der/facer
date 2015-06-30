@@ -1,6 +1,6 @@
 {
   "name": "setic",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -32,5 +32,13 @@
     "unzip": "^0.1.11",
     "unzip-wrapper": "^0.1.5",
     "zip-stream": "^0.5.2"
+  },
+  "devDependencies": {
+    "del": "^1.2.0",
+    "gulp": "^3.9.0",
+    "gulp-bump": "^0.3.1",
+    "gulp-git": "^1.2.4",
+    "gulp-util": "^3.0.5",
+    "run-sequence": "^1.1.0"
   }
 }
