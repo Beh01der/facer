@@ -132,6 +132,10 @@ function patchDeployment(req, res, next) {
     var deployment = req.deployment;
     req.dontUpdateContent = true;
 
+    if (fields.name) {
+        deployment.name = fields.name;
+    }
+
     if (fields.state) {
         deployment.state = fields.state;
     }
@@ -239,6 +243,7 @@ var deploymentRestModel = validator
 
 var patchDeploymentRestModel = validator
     .isObject()
+    .withOptional('name', validator.isString())
     .withOptional('state', validator.isString({ regex: /^(active|inactive)$/ }))
     .withOptional('dataUrl', validator.isString())
     .withOptional('rules', validator.isArray(ruleRestModel, { min: 1, max: 30 }))

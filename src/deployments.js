@@ -371,14 +371,14 @@ function createOrUpdateDeployment(info, oldDeployment, dontUpdateContent, callba
             }
         }
 
-        if (!oldDeployment) {
-            // this is a new deployment
-            var existingWithSameName = getDeploymentByName(info.name);
-            if (existingWithSameName) {
-                // but deployment with the same name exists - remove it
-                removeDeployment(existingWithSameName);
-            }
-        }
+        //if (!oldDeployment) {
+        //    // this is a new deployment
+        //    var existingWithSameName = getDeploymentByName(info.name);
+        //    if (existingWithSameName) {
+        //        // but deployment with the same name exists - remove it
+        //        removeDeployment(existingWithSameName);
+        //    }
+        //}
 
         if (dataSourceUrl) {
             // get content
