@@ -55,7 +55,6 @@ storage.load(function(loadedDeployments) {
 });
 
 function cleanCache() {
-    deploymentsPrepared = [];
     resolvedRules = {};
     fileInfos = {};
 }
@@ -244,6 +243,15 @@ function updateCreateDeployment(info, updateContent, oldDeployment, dontStore) {
     }
 }
 
+function getDeploymentByName(name) {
+    for (var i = 0; i < deployments.length; i++) {
+        var deployment = deployments[i];
+        if (deployment.name === name) {
+            return deployment;
+        }
+    }
+}
+
 function updateDeploymentContent(info, dataSourceUrl, callback) {
     var dataDir = './data/' + info.id;
     var dataFile = dataDir + '/' + info.id + '.zip';
@@ -333,6 +341,20 @@ function updateDeploymentContent(info, dataSourceUrl, callback) {
     }
 }
 
+function removeDeployment(deployment) {
+    for (var i = 0; i < deployments.length; i++) {
+        var d = deployments[i];
+        if (d.id === deployment.id) {
+            deployments.splice(i, 1);
+            deploymentsPrepared.splice(i, 1);
+            storage.remove(i);
+            fse.removeSync('./data/' + d.id);
+            cleanCache();
+            return;
+        }
+    }
+}
+
 function createOrUpdateDeployment(info, oldDeployment, dontUpdateContent, callback) {
     if (dontUpdateContent) {
         updateCreateDeployment(info, !dontUpdateContent, oldDeployment);
@@ -346,6 +368,15 @@ function createOrUpdateDeployment(info, oldDeployment, dontUpdateContent, callba
             dataSourceUrl = url.parse(info.dataUrl);
             if (!dataSourceUrl) {
                 return callback({ message: 'Could not resolve dataUrl' });
+            }
+        }
+
+        if (!oldDeployment) {
+            // this is a new deployment
+            var existingWithSameName = getDeploymentByName(info.name);
+            if (existingWithSameName) {
+                // but deployment with the same name exists - remove it
+                removeDeployment(existingWithSameName);
             }
         }
 
@@ -419,19 +450,7 @@ var service = {
         next();
     },
 
-    removeDeployment: function(deployment) {
-        for (var i = 0; i < deployments.length; i++) {
-            var d = deployments[i];
-            if (d.id === deployment.id) {
-                deployments.splice(i, 1);
-                deploymentsPrepared.splice(i, 1);
-                storage.remove(i);
-                fse.removeSync('./data/' + d.id);
-                cleanCache();
-                return;
-            }
-        }
-    },
+    removeDeployment: removeDeployment,
 
     getDeploymentById: function(id) {
         for (var i = 0; i < deployments.length; i++) {
@@ -448,14 +467,7 @@ var service = {
         }
     },
 
-    getDeploymentByName: function(name) {
-        for (var i = 0; i < deployments.length; i++) {
-            var deployment = deployments[i];
-            if (deployment.name === name) {
-                return deployment;
-            }
-        }
-    }
+    getDeploymentByName: getDeploymentByName
 };
 
 module.exports = service;
