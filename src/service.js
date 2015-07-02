@@ -213,6 +213,24 @@ function deleteDeployment(req, res, next) {
     next();
 }
 
+function handleTraceUrl(req, res, next) {
+    if (req.params && req.params[0]) {
+        req.url = req.params[0];
+    } else {
+        req.url = '/';
+    }
+
+    next();
+}
+
+function returnRuleInfo(req, res) {
+    res.json({
+        code: 'OK',
+        time: moment().format(),
+        rule: req.rule
+    });
+}
+
 var matchSectionRestModel = validator
     .isObject()
     .withRequired('path', validator.isString());
@@ -274,7 +292,7 @@ if (commander.verbose) {
     );
 }
 
-app.all('/control/deployment*', noCache, authorise);
+app.all('/control/*', noCache, authorise);
 
 app.get('/control/deployments', returnDeploymentList);
 
@@ -287,6 +305,8 @@ app.put('/control/deployments/:id', findDeployment, bodyParser.json(), validator
 app.patch('/control/deployments/:id', findDeployment, bodyParser.json(), validator.bodyValidator(patchDeploymentRestModel), patchDeployment, createOrUpdateDeployment, returnDeploymentInfo);
 
 app.delete('/control/deployments/:id', findDeployment, deleteDeployment, returnDeploymentInfo);
+
+app.get(/\/control\/trace(.*)/, handleTraceUrl, deploymentManager.findRule, returnRuleInfo);
 
 app.all('*', deploymentManager.findRule, serveStatic, serveDownstream);
 

@@ -166,13 +166,15 @@ function tryDownstreams(req, deployment) {
     return preparedRule.resultPath ? preparedRule : null;
 }
 
-function updateCreateDeployment(info, updateContent, oldDeployment, dontStore) {
+function updateCreateDeployment(info, updateContent, oldDeployment, loading) {
     var nowMoment = moment(Date.now());
-    if (oldDeployment) {
-        info.name = oldDeployment.name;
+    if (!loading) {
+        if (oldDeployment) {
+            info.name = oldDeployment.name;
+        }
+        info.created = oldDeployment ? oldDeployment.created : nowMoment.format();
+        info.updated = nowMoment.format();
     }
-    info.created = oldDeployment ? oldDeployment.created : nowMoment.format();
-    info.updated = nowMoment.format();
 
     var modified = moment(info.contentModified);
     if (!modified.isValid()) {
@@ -191,12 +193,12 @@ function updateCreateDeployment(info, updateContent, oldDeployment, dontStore) {
         }
 
         deployments[oldDeploymentIndex] = info;
-        if (!dontStore) {
+        if (!loading) {
             storage.update(info, oldDeploymentIndex, updateContent);
         }
     } else {
         deployments.push(info);
-        if (!dontStore) {
+        if (!loading) {
             storage.create(info);
         }
     }
