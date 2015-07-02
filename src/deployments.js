@@ -237,7 +237,7 @@ function updateCreateDeployment(info, updateContent, oldDeployment, loading) {
             preparedDeployment.rules.push(newRule);
         });
 
-        if (oldDeploymentIndex) {
+        if (oldDeploymentIndex !== undefined) {
             deploymentsPrepared[oldDeploymentIndex] = preparedDeployment;
         } else {
             deploymentsPrepared.push(preparedDeployment);
