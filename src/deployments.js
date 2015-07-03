@@ -242,6 +242,10 @@ function updateCreateDeployment(info, updateContent, oldDeployment, loading) {
         } else {
             deploymentsPrepared.push(preparedDeployment);
         }
+    } else {
+        if (oldDeploymentIndex !== undefined) {
+            deploymentsPrepared.splice(oldDeploymentIndex, 1);
+        }
     }
 }
 
