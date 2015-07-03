@@ -10,6 +10,7 @@ deployment object:
 {
     id: string,
     name: string,
+    message: string,
     state: active|inactive,
     created: time,
     updated: time,
@@ -136,6 +137,10 @@ function patchDeployment(req, res, next) {
         deployment.name = fields.name;
     }
 
+    if (fields.message) {
+        deployment.message = fields.message;
+    }
+
     if (fields.state) {
         deployment.state = fields.state;
     }
@@ -256,12 +261,14 @@ var deploymentRestModel = validator
     .withRequired('name', validator.isString())
     .withRequired('state', validator.isString({ regex: /^(active|inactive)$/ }))
     .withRequired('rules', validator.isArray(ruleRestModel, { min: 1, max: 30 }))
+    .withOptional('message', validator.isString())
     .withOptional('dataUrl', validator.isString())
     .withOptional('contentModified', validator.isIsoDateTime());
 
 var patchDeploymentRestModel = validator
     .isObject()
     .withOptional('name', validator.isString())
+    .withOptional('message', validator.isString())
     .withOptional('state', validator.isString({ regex: /^(active|inactive)$/ }))
     .withOptional('dataUrl', validator.isString())
     .withOptional('rules', validator.isArray(ruleRestModel, { min: 1, max: 30 }))
