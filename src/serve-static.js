@@ -6,16 +6,19 @@ module.exports = function(req, res, next) {
     if (rule && rule.type === 'file') {
         if (rule.redirect) {
             res.setHeader('Location',  parseurl(req).pathname + '/');
-            res.send(302);
+            res.sendStatus(302);
         } else {
             send(req, rule.resultPath, { etag: false, lastModified: false })
                 .on('headers', function (res) {
                     if (rule.ageInterval) {
+                        var modified = new Date(rule.contentModified);
+                        var expires = new Date(Date.now() + rule.ageInterval);
+                        var ageSeconds = (expires.getTime() - modified.getTime()) / 1000;
+
                         res.setHeader('Pragma', 'public');
-                        res.setHeader('Expires', new Date(Date.now() + rule.ageInterval).toUTCString());
-                        var ageSeconds = rule.ageInterval / 1000;
+                        res.setHeader('Expires', expires.toUTCString());
                         res.setHeader('Cache-Control', 'public, max-age=' + ageSeconds + ', s-maxage=' + ageSeconds);
-                        res.setHeader('Last-Modified', new Date(rule.contentModified).toUTCString());
+                        res.setHeader('Last-Modified', modified.toUTCString());
                     } else {
                         res.setHeader('Pragma', 'no-cache');
                         res.setHeader('Expires', new Date(Date.now() - 100000000000).toUTCString());
