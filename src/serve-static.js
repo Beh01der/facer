@@ -13,7 +13,7 @@ module.exports = function(req, res, next) {
                     if (rule.ageInterval) {
                         var modified = new Date(rule.contentModified);
                         var expires = new Date(Date.now() + rule.ageInterval);
-                        var ageSeconds = (expires.getTime() - modified.getTime()) / 1000;
+                        var ageSeconds = Math.round((expires.getTime() - modified.getTime()) / 1000);
 
                         res.setHeader('Pragma', 'public');
                         res.setHeader('Expires', expires.toUTCString());
