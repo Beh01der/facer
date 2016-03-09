@@ -28,9 +28,9 @@ module.exports = function(req, res, next) {
             res.setHeader('Location',  parseurl(req).pathname + '/');
             res.sendStatus(302);
         } else {
-            if (req.header['if-modified-since'] && new Date(rule.contentModified) <= new Date(req.header['if-modified-since']) ) {
+            if (req.headers['if-modified-since'] && new Date(rule.contentModified) <= new Date(req.headers['if-modified-since']) ) {
                 setCacheHeaders(rule, res);
-                res.setHeader('Last-Modified', req.header['if-modified-since']);
+                res.setHeader('Last-Modified', req.headers['if-modified-since']);
                 res.sendStatus(304);
             } else {
                 send(req, rule.resultPath, { etag: false, lastModified: false })
