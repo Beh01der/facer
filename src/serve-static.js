@@ -1,6 +1,7 @@
 var send = require('send');
 var parseurl = require('parseurl');
 
+var maxAgeLimit = 60*60*24*360*1000;
 module.exports = function(req, res, next) {
     var rule = req.rule;
     if (rule && rule.type === 'file') {
@@ -11,15 +12,15 @@ module.exports = function(req, res, next) {
             send(req, rule.resultPath, { etag: false, lastModified: false })
                 .on('headers', function (res) {
                     if (rule.ageInterval) {
-                        var modified = new Date(rule.contentModified);
-                        var expires = new Date(Date.now() + rule.ageInterval);
-                        //var ageSeconds = Math.round((expires.getTime() - modified.getTime()) / 1000);
+                        var maxAge = Math.min(rule.ageInterval, maxAgeLimit);
+                        var maxAgeSeconds = Math.round(maxAge / 1000);
+                        var expires = new Date(Date.now() + maxAge);
 
                         res.setHeader('Pragma', 'public');
                         res.setHeader('Expires', expires.toUTCString());
-                        //res.setHeader('Cache-Control', 'public, max-age=' + ageSeconds + ', s-maxage=' + ageSeconds);
-                        res.setHeader('Cache-Control', 'public');
-                        res.setHeader('Last-Modified', modified.toUTCString());
+                        res.setHeader('Cache-Control', 'public, max-age=' + maxAgeSeconds + ', s-maxage=' + maxAgeSeconds);
+                        //res.setHeader('Cache-Control', 'public');
+                        res.setHeader('Last-Modified', new Date().toUTCString());
                     } else {
                         res.setHeader('Pragma', 'no-cache');
                         res.setHeader('Expires', new Date(Date.now() - 100000000000).toUTCString());
