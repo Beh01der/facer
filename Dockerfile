@@ -2,7 +2,10 @@ FROM node:5.11.0-wheezy
 
 ADD . /home
 
-RUN cd /home; npm install --production
+RUN apt-get update -y && \
+    apt-get install zip unzip -y && \
+    apt-get clean && \
+    cd /home; npm install --production
 
 EXPOSE 3000
 
