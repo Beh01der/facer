@@ -58,7 +58,7 @@ commander
     .version(pack.version)
     .option('-t, --token <value>', 'secure token')
     .option('-p, --port <n>', 'service port', 3000, parseInt)
-    .option('-m, --mongo-url <value>', 'MongoDB connection url "host:[port]/db"') // localhost:27017/setic
+    .option('-m, --mongo-url <value>', 'MongoDB connection url "host:[port]/db"') // localhost:27017/facer
     .option('-v, --verbose', 'verbose output')
     .parse(process.argv);
 
@@ -342,5 +342,5 @@ app.use(function(err, req, res, next) {
 });
 
 app.listen(commander.port, function () {
-    console.log('setic ' + pack.version + ' listening on port ' + commander.port);
+    console.log('facer ' + pack.version + ' listening on port ' + commander.port);
 });
