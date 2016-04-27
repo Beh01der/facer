@@ -45,8 +45,8 @@ gulp.task('create-new-tag', function (cb) {
 
 gulp.task('default', function(cb) {
     runSequence(
-        'clean',
-        'copy',
+        // 'clean',
+        // 'copy',
         'bump-version',
         'commit-changes',
         'create-new-tag',
