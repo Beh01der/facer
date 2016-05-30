@@ -1,4 +1,4 @@
-FROM node:5.11.0-wheezy
+FROM node:5.5.0-slim
 
 ADD . /home
 
