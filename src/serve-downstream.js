@@ -21,10 +21,6 @@ module.exports = function (req, res, next) {
             req.url  += url.search;
         }
 
-        if (url.pathname.indexOf('google/callback') !== -1) {
-            console.log(req.headers);
-        }
-
         delete req._parsedUrl;
 
         proxy.web(req, res, { target: rule.downstream });
